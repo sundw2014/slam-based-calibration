@@ -1,0 +1,29 @@
+<launch>
+  <!-- rviz -->
+  <arg name="rviz" default="false" />
+  <arg name="npz_path" default="~/calibration_data.npz" />
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find loam_velodyne)/rviz_cfg/loam_velodyne.rviz" />
+  </group>
+
+  <!-- loam_velodyne -->
+  <node pkg="loam_velodyne" type="scanRegistration" name="scanRegistration" output="screen"/>
+
+  <node pkg="loam_velodyne" type="laserOdometry" name="laserOdometry" output="screen" respawn="true">
+  </node>
+
+  <node pkg="loam_velodyne" type="laserMapping" name="laserMapping" output="screen"/>
+  <node pkg="loam_velodyne" type="transformMaintenance" name="transformMaintenance" output="screen"/>
+
+  <!-- ORB_SLAM -->
+  <node pkg="image_view" type="image_view" name="image_view" respawn="false" output="log">
+  <remap from="/image" to="/ORB_SLAM/Frame" />
+  <param name="autosize" value="true"/>
+  </node>
+
+  <node pkg="ORB_SLAM" type="ORB_SLAM" name="ORB_SLAM"  args="Data/ORBvoc.txt Data/Settings.yaml" cwd="node" output="screen">
+  </node>
+
+  <!-- calibration -->
+  <node pkg="lidar_camera_calibration_slam_based" type="calibration.py" name="calibration" args="$(arg npz_path)" respawn="false" output="screen">
+</launch>
