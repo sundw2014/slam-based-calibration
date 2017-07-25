@@ -1,0 +1,13 @@
+#
+# service for vrep simulation 
+#
+
+int64 pid
+---
+int64 pid
+sensor_msgs/Image image
+geometry_msgs/Transform c2l
+geometry_msgs/Transform c2w
+geometry_msgs/Transform l2w
+int64 pcsize
+float64[] pc

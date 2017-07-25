@@ -1,0 +1,56 @@
+{
+	"is_simulate":true,
+	"record_num":100,
+
+	"is_load_pairs":true,
+	"pair_factor":5,
+	"pair_angle_err_threshold_1":1,
+	"pair_angle_err_threshold_2":0.005,
+
+	"img_trans_threshold":0.001,
+	"img_trans_iterations":1,
+	"img_trans_ba_iterations":3000,
+	"img_trans_ba_verbose":false,
+	"path":
+	{
+		"data":"/home/nick/Projects/extrinsicCalibration/data/0112",
+		"log":"/home/nick/Projects/extrinsic_calibration/log"
+	},
+	"intrinsic_fx_fy_s_u_v":[1.097987543300894e+03,1.097987543300894e+03,0,512,512],
+
+	"img":{
+		"edlines":{
+			"ksize":7,
+			"sigma":2,
+			"gradientThreshold":80,
+			"anchorThreshold":1,
+			"scanIntervals":1,
+			"minLineLen":50,
+			"lineFitErrThreshold":4
+		}
+	},
+
+	"pc":{
+		"edlines":{
+			"ksize":3,
+			"sigma":1,
+			"gradientThreshold":120,
+			"anchorThreshold":1,
+			"scanIntervals":1,
+			"minLineLen":10,
+			"lineFitErrThreshold":1
+		},
+		"pcm_config_path":"/home/nick/projects/extrinsic_calibration/ros/config/icp.yaml",
+		"size":1200,
+		"exp":3,
+		"num_min":5,
+		"square_min":2,
+		"dist_min":20.0
+	},
+
+	"lines":{
+		"dir_err_max":5,
+		"dist_err_max":4
+	}
+
+}

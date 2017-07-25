@@ -1,7 +1,8 @@
 <launch>
   <!-- rviz -->
   <arg name="rviz" default="false" />
-  <arg name="npz_path" default="~/calibration_data.npz" />
+  <arg name="npz_path" default="/home/sundw/workspace/data/calibration_data.npz" />
+  <arg name="mat_path" default="/home/sundw/workspace/data/calibration_poses.mat" />
   <group if="$(arg rviz)">
     <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find loam_velodyne)/rviz_cfg/loam_velodyne.rviz" />
   </group>
@@ -25,5 +26,5 @@
   </node>
 
   <!-- calibration -->
-  <node pkg="lidar_camera_calibration_slam_based" type="calibration.py" name="calibration" args="$(arg npz_path)" respawn="false" output="screen">
+  <node pkg="lidar_camera_calibration_slam_based" type="calibration.py" name="calibration" args="$(arg npz_path) $(arg mat_path)" respawn="false" output="screen" />
 </launch>

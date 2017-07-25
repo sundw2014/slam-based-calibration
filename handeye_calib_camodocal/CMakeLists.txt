@@ -1,22 +1,95 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(lidar_camera_calibration_slam_based)
+project(handeye_calib_camodocal)
 
-## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
+# Enable C++11
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support, or our tests failed to detect it correctly. Please use a different C++ compiler or report this problem to the developers.")
+endif()
+
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  tf_conversions
   roscpp
-  rospy
-  std_msgs
-  message_generation
+  tf
+  trajectory_msgs
+  #vrep_common
 )
+find_package(Gflags REQUIRED)
+find_package(Glog REQUIRED)
 
+message("Gflags found = ${GFLAGS_FOUND}")
+message("Glog found = ${GLOG_FOUND}")
+SET(Gflags_FOUND ${GFLAGS_FOUND})
+SET(Glog_FOUND ${GLOG_FOUND})
+
+find_package(Threads QUIET)
+find_package(Ceres QUIET REQUIRED)
+SET(GFLAGS_LIBRARY ${CMAKE_THREAD_LIBS_INIT})
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(OpenCV REQUIRED)
+
+if(OpenCV_FOUND)
+	message(STATUS "OpenCV version: ${OpenCV_VERSION}")
+    if(NOT OpenCV_VERSION VERSION_LESS "3.0.0")
+        add_definitions(-DHAVE_OPENCV3)
+		message(STATUS "defined HAVE_OPENCV3")
+
+        set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${OPENCV_INCLUDE_DIRS})
+        include(CheckIncludeFileCXX)
+
+        check_include_file_cxx(opencv2/face/facerec.hpp HAVE_OPENCV_CONTRIB)
+        if(HAVE_OPENCV_CONTRIB)
+            add_definitions(-DHAVE_OPENCV_CONTRIB)
+        elseif()
+            message(STATUS "OPENCV_CONTRIB NOT PRESENT, DISABLING LOTS OF FUNCTIONALITY, SEE https://github.com/opencv/opencv_contrib")
+        endif()
+
+        check_include_file_cxx(opencv2/xfeatures2d/nonfree.hpp HAVE_OPENCV_XFEATURES2D_NONFREE)
+        if(HAVE_OPENCV_XFEATURES2D_NONFREE)
+            add_definitions(-DHAVE_OPENCV_XFEATURES2D_NONFREE)
+        elseif()
+            message(STATUS "OPENCV_XFEATURES2D_NONFREE NOT PRESENT, DISABLING LOTS OF FUNCTIONALITY, SEE https://github.com/opencv/opencv_contrib")
+        endif()
+
+        check_include_file_cxx(opencv2/cudafeatures2d.hpp HAVE_OPENCV_CUDAFEATURES2D)
+        if(HAVE_OPENCV_CUDAFEATURES2D)
+            add_definitions(-DHAVE_OPENCV_CUDAFEATURES2D)
+        elseif()
+            message(STATUS "OPENCV_CUDAFEATURES2D NOT PRESENT, DISABLING LOTS OF FUNCTIONALITY")
+        endif()
+
+    else()
+        add_definitions(-DHAVE_OPENCV2)
+    endif()
+endif()
+
+# enable GPU enhanced SURF features
+# if BOTH CUDA and the OPENCV contrib cuda features are available
+if(CUDA_FOUND AND HAVE_OPENCV_CUDAFEATURES2D)
+    add_definitions(-DHAVE_CUDA)
+    message(STATUS "defined HAVE_CUDA")
+
+    set(CUDA_CUDART_LIBRARY_OPTIONAL ${CUDA_CUDART_LIBRARY})
+endif()
+
+# OSX RPATH
+if(APPLE)
+   set(CMAKE_MACOSX_RPATH ON)
+endif()
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -28,7 +101,7 @@ find_package(catkin REQUIRED COMPONENTS
 ################################################
 
 ## To declare and build messages, services or actions from within this
-## package, follow these steps:
+## package, follow these stepadd_definitionss:
 ## * Let MSG_DEP_SET be the set of packages whose message types you use in
 ##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
 ## * In the file package.xml:
@@ -48,14 +121,15 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   keyframeMsg.msg
- )
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
-#   FILES
+#   FILESCAMODOCAL
 #   Service1.srv
 #   Service2.srv
 # )
@@ -68,10 +142,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -104,62 +178,45 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES lidar_camera_calibration_slam_based
-#  CATKIN_DEPENDS roscpp rospy std_msgs
-#  DEPENDS system_lib
+#  LIBRARIES handeye_calib_camodocal
+   CATKIN_DEPENDS eigen roscpp tf trajectory_msgs #vrep_common
 )
 
 ###########
 ## Build ##
 ###########
 
-find_package( Sophus REQUIRED )
-find_package(OpenCV REQUIRED)
-
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+# include_directories(include)
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
-  ${Sophus_INCLUDE_DIRS}
-  "/usr/include/eigen3"
+  ${catkin_INCLUDE_DIRS} ./src
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/lidar_camera_calibration_slam_based.cpp
+# add_library(handeye_calib_camodocal
+#   src/${PROJECT_NAME}/handeye_calib_camodocal.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(handeye_calib_camodocal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-add_executable(calibrationWithLSD src/calibrationWithLSD.cpp)
-
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+add_executable(handeye_calib_camodocal
+  src/handeye_calibration.cpp
+  src/camodocal/calib/HandEyeCalibration.cc)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(handeye_calib_camodocal_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(calibrationWithLSD
-   ${catkin_LIBRARIES}
-   ${Sophus_LIBRARIES}
-   ceres
-   ${OpenCV_LIBS}
-   MIToolbox
- )
-
-target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
+message("GLOG = ${GLOG_LIBRARIES}  ${GLOG_LIB}  ${GLOG_LIBS}")
+target_link_libraries(handeye_calib_camodocal
+  ${catkin_LIBRARIES} ${GLOG_LIBRARIES}  ${GLOG_LIB}  ${GLOG_LIBS} ${OpenCV_LIBRARIES} ${CERES_LIBRARIES}
+)
 #############
 ## Install ##
 #############
@@ -175,7 +232,7 @@ target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+# install(TARGETS handeye_calib_camodocal handeye_calib_camodocal_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -200,7 +257,7 @@ target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_lidar_camera_calibration_slam_based.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_handeye_calib_camodocal.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
