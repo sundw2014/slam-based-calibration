@@ -159,7 +159,7 @@ struct singlePointCloudMICost{
 	PointCloud _pc;
 	DepthImage _depth;
 	template <typename T>
-	bool operator()(const T* const xi_cam_velo, T* residuals) const
+	bool operator()(const T* const xi_cam_velo, T* residuals, std::string windowName) const
 	{
 		typedef Matrix<double,6,1> Vector6d;
 		const Vector6d xi = Map<const Vector6d>(xi_cam_velo,6,1);
@@ -197,8 +197,7 @@ struct singlePointCloudMICost{
 		}
 		cv::Mat image;
 		cv::eigen2cv(depth_gt, image);
-		cv::imshow( "velo_depth", image / 1.0 );                   // Show our image inside it.
-		cv::waitKey(0);                                          // Wait for a keystroke in the window
+		cv::imshow(windowName, image / 1.0 );                   // Show our image inside it.
 		if(Xpt-X > 1000){
 			residuals[0] = 1.0 / mi(discAndCalcJointProbability(X,Y,(Xpt-X)));
 			// ;
@@ -228,8 +227,9 @@ int main(int argc, char **argv)
 	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
 	cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	cv::namedWindow( "lsd_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	double loss = 0.0;
+	cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	double loss1 = 0.0, loss2 = 0.0;
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
 		auto depth = kF.depth;
@@ -255,9 +255,15 @@ int main(int argc, char **argv)
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
 		singlePointCloudMICost pcc(velo_pointCloud, depth);
 		double T_cam_velo_xi[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.20154}, residuals[1];
-		pcc(T_cam_velo_xi, residuals);
-		loss += residuals[0];
-		std::cout<<loss<<std::endl;
+		double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
+		pcc(T_cam_velo_xi, residuals, "velo");
+		loss1 += residuals[0];
+		pcc(T_cam_velo_xi_error, residuals, "velo_error");
+		loss2 += residuals[0];
+
+		std::cout<< loss1 << " " << loss2 <<std::endl;
+		cv::waitKey(0);                                          // Wait for a keystroke in the window
+
 		// add residuals of this pair to ceres
 		// should pruning some points before adding residuals
 		// error = 1 / MI(filter(K*T*point)[depth], depth_gt)
