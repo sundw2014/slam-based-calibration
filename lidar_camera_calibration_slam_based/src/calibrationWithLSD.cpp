@@ -15,6 +15,7 @@
 #define COMPILE_C
 #include "MIToolbox/CalculateProbability.h"
 #include "MIToolbox/MutualInformation.h"
+#include <chrono>
 
 using namespace Eigen;
 using DepthImage = MatrixXd *;
@@ -158,11 +159,12 @@ struct singlePointCloudMICost{
 	singlePointCloudMICost(PointCloud pc, DepthImage depth):_pc(pc), _depth(depth){};
 	PointCloud _pc;
 	DepthImage _depth;
-	template <typename T>
-	bool operator()(const T* const xi_cam_velo, T* residuals, std::string windowName) const
+	// template <typename T>
+	bool operator()(const double* const xi_cam_velo, double* residuals) const
 	{
 		typedef Matrix<double,6,1> Vector6d;
-		const Vector6d xi = Map<const Vector6d>(xi_cam_velo,6,1);
+		Vector6d xi;
+		for (int i=0;i<6;i++) xi(i) = double(xi_cam_velo[i]);// = Map<const Vector6d>(xi_cam_velo,6,1);
 		MatrixXd T_cam_velo = Sophus::SE3d::exp(xi).matrix();
 		MatrixXd _pc_homo(4, _pc->cols());
 		_pc_homo << _pc->topRows(3), MatrixXd::Ones(1, _pc->cols());
@@ -176,7 +178,7 @@ struct singlePointCloudMICost{
 
 		int num_point = imagePoints.cols();
 		double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
-		MatrixXd depth_gt = MatrixXd::Zero(480, 640);
+		// MatrixXd depth_gt = MatrixXd::Zero(480, 640);
 		for(int i=0;i<num_point;i++)
 		{
 			Vector3d p = imagePoints.col(i);
@@ -186,7 +188,7 @@ struct singlePointCloudMICost{
 				// out of camera plane
 				continue;
 			}
-			depth_gt((int)(v), int(u)) = z / 30.0;
+			// depth_gt((int)(v), int(u)) = z / 30.0;
 
 			double image_depth = (*_depth)((int)(v), (int)(u));
 			if(image_depth > 0 && image_depth < 100.0){
@@ -195,15 +197,15 @@ struct singlePointCloudMICost{
 				Xpt++; Ypt++;
 			}
 		}
-		cv::Mat image;
-		cv::eigen2cv(depth_gt, image);
-		cv::imshow(windowName, image / 1.0 );                   // Show our image inside it.
+		// cv::Mat image;
+		// cv::eigen2cv(depth_gt, image);
+		// cv::imshow(windowName, image / 1.0 );                   // Show our image inside it.
 		if(Xpt-X > 1000){
-			residuals[0] = 1.0 / mi(discAndCalcJointProbability(X,Y,(Xpt-X)));
+			residuals[0] = double(1.0 / mi(discAndCalcJointProbability(X,Y,(Xpt-X))));
 			// ;
 		}
 		else{
-			residuals[0] = 100.0;
+			residuals[0] = double(100.0);
 		}
 		delete[] X,Y;
 	}
@@ -219,54 +221,50 @@ int main(int argc, char **argv)
 
   while(ros::ok()){
     ros::spinOnce();
-		if(frame_count>5) {break;}
+		if(frame_count>30) {break;}
   }
 
   // start calibrating
 	std::vector<double> timestamp_vec;
 	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
-	cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "lsd_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	double loss1 = 0.0, loss2 = 0.0;
+	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "lsd_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// double loss1 = 0.0, loss2 = 0.0;
+	ceres::Problem problem;
+	double T_cam_velo_xi[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.20154};
+	double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
+	double result[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
+
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
 		auto depth = kF.depth;
 		auto color = kF.color;
-		// cv::Mat image(480,640,CV_64F);
-		// for(int i=0;i<480;i++){
-		// 	for(int j=0;j<640;j++){
-		// 		image.at<double>(i,j) = (*depth)(i,j);
-		// 	}
-		// }
-		cv::Mat image;
-		cv::eigen2cv(*depth, image);
-		cv::imshow( "lsd_depth", image / 1.0 );                   // Show our image inside it.
-		// cv::waitKey(0);                                          // Wait for a keystroke in the window
-
-		cv::Mat image_color;
-		cv::eigen2cv(*color, image_color);
-		cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
 
 		int frameId = findCorrespondingLidarScan(timestamp, timestamp_vec);
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		singlePointCloudMICost pcc(velo_pointCloud, depth);
-		double T_cam_velo_xi[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.20154}, residuals[1];
-		double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
-		pcc(T_cam_velo_xi, residuals, "velo");
-		loss1 += residuals[0];
-		pcc(T_cam_velo_xi_error, residuals, "velo_error");
-		loss2 += residuals[0];
+		// singlePointCloudMICost pcc(velo_pointCloud, depth);
 
-		std::cout<< loss1 << " " << loss2 <<std::endl;
-		cv::waitKey(0);                                          // Wait for a keystroke in the window
-
-		// add residuals of this pair to ceres
-		// should pruning some points before adding residuals
-		// error = 1 / MI(filter(K*T*point)[depth], depth_gt)
+		problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::CENTRAL, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth )), nullptr, result);
 	}
-  return 0;
+	ceres::Solver::Options options;
+	options.use_nonmonotonic_steps = true;
+	options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+	options.minimizer_progress_to_stdout = true;
+	ceres::Solver::Summary summary;
+
+	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+	ceres::Solve ( options, &problem, &summary );
+	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
+	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
+
+	std::cout<<summary.BriefReport() <<std::endl;
+	std::cout<<"estimated T_cam3_velo : ";
+	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
+	return 0;
 }

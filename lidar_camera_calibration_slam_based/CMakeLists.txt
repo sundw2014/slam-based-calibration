@@ -115,6 +115,7 @@ catkin_package(
 
 find_package( Sophus REQUIRED )
 find_package(OpenCV REQUIRED)
+find_package(Ceres QUIET REQUIRED)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -157,6 +158,7 @@ target_link_libraries(calibrationWithLSD
    ceres
    ${OpenCV_LIBS}
    MIToolbox
+   ${CERES_LIBRARIES}
  )
 
 target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
