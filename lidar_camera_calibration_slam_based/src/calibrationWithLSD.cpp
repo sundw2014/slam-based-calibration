@@ -40,7 +40,7 @@ std::vector<KeyFrame> keyFrames;
 uint32_t image_w = 0, image_h = 0;
 Matrix<double,3,3> cameraK = MatrixXd::Zero(3,3);
 int frame_count = 0;
-
+#define NUM_FRAMES_COUNT_LIMIT 30
 void keyFrameCallback(const lidar_camera_calibration_slam_based::keyframeMsg& msg)
 {
 	ROS_INFO("new key frame!!!");
@@ -152,13 +152,15 @@ bool loadVeloPointCloud(int frameId, MatrixXd &pc)
 	input.close();
 	Map<MatrixXf> _pc(buffer, 4, (int)(size/sizeof(float)/4));
 	pc = _pc.cast<double>();
+	delete[] buffer;
   return true;
 }
 
 struct singlePointCloudMICost{
-	singlePointCloudMICost(PointCloud pc, DepthImage depth):_pc(pc), _depth(depth){};
+	singlePointCloudMICost(PointCloud pc, DepthImage depth, DepthImage color):_pc(pc), _depth(depth), _color(color){};
 	PointCloud _pc;
 	DepthImage _depth;
+	DepthImage _color;
 	// template <typename T>
 	bool operator()(const double* const xi_cam_velo, double* residuals) const
 	{
@@ -188,26 +190,34 @@ struct singlePointCloudMICost{
 				// out of camera plane
 				continue;
 			}
+			// this point is on the camera plane
+			double image_color = (*_color)((int)(v), (int)(u));
+			*Xpt = (*_pc)(3, i) * 255.0; *Ypt = image_color * 255.0;
+			Xpt++; Ypt++;
+
 			// depth_gt((int)(v), int(u)) = z / 30.0;
 
-			double image_depth = (*_depth)((int)(v), (int)(u));
-			if(image_depth > 0 && image_depth < 100.0){
-				// find a corresponding point, add depth to random varibles X and Y
-				*Xpt = z; *Ypt = image_depth;
-				Xpt++; Ypt++;
-			}
+			// double image_depth = (*_depth)((int)(v), (int)(u));
+			// if(image_depth > 0 && image_depth < 100.0){
+			// 	// find a corresponding point, add depth to random varibles X and Y
+			// 	*Xpt = z; *Ypt = image_depth;
+			// 	Xpt++; Ypt++;
+			// }
 		}
 		// cv::Mat image;
 		// cv::eigen2cv(depth_gt, image);
 		// cv::imshow(windowName, image / 1.0 );                   // Show our image inside it.
 		if(Xpt-X > 1000){
-			residuals[0] = double(1.0 / mi(discAndCalcJointProbability(X,Y,(Xpt-X))));
+			auto prob = discAndCalcJointProbability(X,Y,(Xpt-X));
+			residuals[0] = double(1.0 / mi(prob));
+			freeJointProbabilityState(prob);
 			// ;
 		}
 		else{
 			residuals[0] = double(100.0);
 		}
-		delete[] X,Y;
+		delete[] X;
+		delete[] Y;
 	}
 };
 
@@ -221,7 +231,7 @@ int main(int argc, char **argv)
 
   while(ros::ok()){
     ros::spinOnce();
-		if(frame_count>30) {break;}
+		if(frame_count>NUM_FRAMES_COUNT_LIMIT) {break;}
   }
 
   // start calibrating
@@ -248,10 +258,10 @@ int main(int argc, char **argv)
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
 		// singlePointCloudMICost pcc(velo_pointCloud, depth);
 
-		problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::CENTRAL, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth )), nullptr, result);
+		problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
 	}
 	ceres::Solver::Options options;
-	options.use_nonmonotonic_steps = true;
+	// options.use_nonmonotonic_steps = true;
 	options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
 	options.minimizer_progress_to_stdout = true;
 	ceres::Solver::Summary summary;
