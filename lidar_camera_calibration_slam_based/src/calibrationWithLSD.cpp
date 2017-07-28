@@ -270,6 +270,8 @@ int main(int argc, char **argv)
 	double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
 	double result[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
 	double T_cam_velo_xi_result[6] = {0.11466, 1.19922, -0.587118, 1.04014, -1.06916, 1.44598};
+	std::vector<singlePointCloudMICost> costV;
+
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
 		auto depth = kF.depth;
@@ -279,7 +281,8 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		// singlePointCloudMICost pcc(velo_pointCloud, depth, color);
+		singlePointCloudMICost pcc(velo_pointCloud, depth, color);
+		costV.push_back(pcc);
 		// double residuals[3];
 		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
@@ -289,9 +292,25 @@ int main(int argc, char **argv)
 		// cv::eigen2cv(*color, image_color);
 		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
 		// cv::waitKey(0);
-		problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
+		// problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
 	}
 
+	double param[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
+	double costs[200] = {0.0};
+	double residuals[1], total_cost=0.0;
+	for(int i=0;i<200;i++){
+		std::cout<<i<<std::endl;
+		param[5] = 1.1 + i*0.001;
+		total_cost = 0.0;
+		for(auto block : costV){
+			block(param, residuals);
+			total_cost += residuals[0];
+		}
+		costs[i] = total_cost;
+	}
+	for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
+
+	return 0;
 	problem.SetParameterLowerBound(result, 0, -0.64);
 	problem.SetParameterUpperBound(result, 0, -0.62);
 	problem.SetParameterLowerBound(result, 1, 0.12);
