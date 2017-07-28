@@ -169,13 +169,14 @@ double coor1D(double *X, double*Y, int vectorLength)
 	}
 	return sum / vectorLength;
 }
+
 struct singlePointCloudMICost{
 	singlePointCloudMICost(PointCloud pc, DepthImage depth, DepthImage color):_pc(pc), _depth(depth), _color(color){};
 	PointCloud _pc;
 	DepthImage _depth;
 	DepthImage _color;
 	// template <typename T>
-	bool operator()(const double* const xi_cam_velo, double* residuals, std::string windowName) const
+	bool operator()(const double* const xi_cam_velo, double* residuals) const//, std::string windowName) const
 	{
 		typedef Matrix<double,6,1> Vector6d;
 		Vector6d xi;
@@ -193,7 +194,7 @@ struct singlePointCloudMICost{
 
 		int num_point = imagePoints.cols();
 		double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
-		MatrixXd depth_gt = MatrixXd::Zero(480, 640);
+		// MatrixXd depth_gt = MatrixXd::Zero(480, 640);
 		for(int i=0;i<num_point;i++)
 		{
 			Vector3d p = imagePoints.col(i);
@@ -204,26 +205,29 @@ struct singlePointCloudMICost{
 				continue;
 			}
 			// this point is on the camera plane
-			double reflectivity = reflectivityMap[int((*_pc)(3,i) * 255.0)];
-			double image_color = (*_color)((int)(v), (int)(u));
-			*Xpt = reflectivity * 255.0; *Ypt = image_color * 255.0;
-			Xpt++; Ypt++;
+			// double reflectivity = reflectivityMap[int((*_pc)(3,i) * 255.0)];
+			// double image_color = (*_color)((int)(v), (int)(u));
+			// *Xpt = reflectivity * 255.0; *Ypt = image_color * 255.0;
+			// Xpt++; Ypt++;
 
-			depth_gt((int)(v), int(u)) = reflectivity;
+			// depth_gt((int)(v), int(u)) = z / 10.0;
 
-			// double image_depth = (*_depth)((int)(v), (int)(u));
-			// if(image_depth > 0 && image_depth < 100.0){
-			// 	// find a corresponding point, add depth to random varibles X and Y
-			// 	*Xpt = z; *Ypt = image_depth;
-			// 	Xpt++; Ypt++;
-			// }
+			double image_depth = (*_depth)((int)(v), (int)(u));
+			if(image_depth > 0 && image_depth < 100.0){
+			// if(image_depth > 0){
+				// find a corresponding point, add depth to random varibles X and Y
+				*Xpt = z; *Ypt = image_depth;
+				Xpt++; Ypt++;
+			}
 		}
-		cv::Mat image;
-		cv::eigen2cv(depth_gt, image);
-		cv::imshow(windowName, image / 1.0 );                   // Show our image inside it.
-		if(Xpt-X > 5000){
+		// cv::Mat image;
+		// cv::eigen2cv(depth_gt, image);
+		// cv::imshow("velo_pointCloud", image / 1.0 );                   // Show our image inside it.
+		// cv::waitKey(1);
+
+		if(Xpt-X > 1000){
 			auto prob = discAndCalcJointProbability(X,Y,(Xpt-X));
-			residuals[0] = double(mi(prob));
+			residuals[0] = double(1.0 / mi(prob));
 			freeJointProbabilityState(prob);
 			// ;
 			// residuals[0] = 1.0 / coor1D(X,Y,(Xpt-X));
@@ -252,17 +256,19 @@ int main(int argc, char **argv)
   // start calibrating
 	std::vector<double> timestamp_vec;
 	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
-	cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_intensity3", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo_intensity3", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo_pointCloud", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// double loss1 = 0.0, loss2 = 0.0;
+
 	ceres::Problem problem;
 	double T_cam_velo_xi[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.20154};
 	double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
-	double result[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
+	double result[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
 	double T_cam_velo_xi_result[6] = {0.11466, 1.19922, -0.587118, 1.04014, -1.06916, 1.44598};
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
@@ -273,22 +279,35 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		singlePointCloudMICost pcc(velo_pointCloud, depth, color);
-		double residuals[3];
-		pcc(T_cam_velo_xi, residuals, "velo_intensity1");
-		pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
-		pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
-		for ( auto a:residuals ) std::cout<<a<<" "; std::cout<<std::endl;
-		cv::Mat image_color;
-		cv::eigen2cv(*color, image_color);
-		cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
-		cv::waitKey(0);
-		// problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
+		// singlePointCloudMICost pcc(velo_pointCloud, depth, color);
+		// double residuals[3];
+		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
+		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
+		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
+		// for ( auto a:residuals ) std::cout<<a<<" "; std::cout<<std::endl;
+		// cv::Mat image_color;
+		// cv::eigen2cv(*color, image_color);
+		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
+		// cv::waitKey(0);
+		problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
 	}
-	return 0;
+
+	problem.SetParameterLowerBound(result, 0, -0.64);
+	problem.SetParameterUpperBound(result, 0, -0.62);
+	problem.SetParameterLowerBound(result, 1, 0.12);
+	problem.SetParameterUpperBound(result, 1, 0.14);
+	problem.SetParameterLowerBound(result, 2, 0.03);
+	problem.SetParameterUpperBound(result, 2, 0.04);
+	problem.SetParameterLowerBound(result, 3, 1.20);
+	problem.SetParameterUpperBound(result, 3, 1.21);
+	problem.SetParameterLowerBound(result, 4, -1.23);
+	problem.SetParameterUpperBound(result, 4, -1.21);
+	problem.SetParameterLowerBound(result, 5, 1.1);
+	problem.SetParameterUpperBound(result, 5, 1.4);
+
 	ceres::Solver::Options options;
 	// options.use_nonmonotonic_steps = true;
-	options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 	ceres::Solver::Summary summary;
 
@@ -299,7 +318,7 @@ int main(int argc, char **argv)
 	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
 	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
 
-	std::cout<<summary.BriefReport() <<std::endl;
+	std::cout<<summary.FullReport() <<std::endl;
 	std::cout<<"estimated T_cam3_velo : ";
 	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
 	return 0;
