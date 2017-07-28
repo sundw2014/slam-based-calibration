@@ -281,9 +281,7 @@ int main(int argc, char **argv)
 
 	ceres::Problem problem;
 	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
-	double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
-	double result[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
-	double T_cam_velo_xi_result[6] = {0.11466, 1.19922, -0.587118, 1.04014, -1.06916, 1.44598};
+	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
 	std::vector<singlePointCloudMICost> costV;
 
 	for(auto kF : keyFrames){
@@ -312,7 +310,7 @@ int main(int argc, char **argv)
 	double residuals[1], total_cost=0.0;
 	for(int i=0;i<200;i++){
 		std::cout<<i<<std::endl;
-		param[5] = -95 - i/200.0*20.0;
+		param[0] = -1.0 + i/200.0*1.0;
 		total_cost = 0.0;
 		for(auto block : costV){
 			block(param, residuals);
