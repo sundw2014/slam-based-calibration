@@ -176,7 +176,7 @@ struct singlePointCloudMICost{
 	DepthImage _depth;
 	DepthImage _color;
 	// template <typename T>
-	bool operator()(const double* const xi_cam_velo, double* residuals) const//, std::string windowName) const
+	bool operator()(const double* const xi_cam_velo, double* residuals, std::string windowName) const
 	{
 		typedef Matrix<double,6,1> Vector6d;
 		Vector6d xi;
@@ -194,7 +194,7 @@ struct singlePointCloudMICost{
 
 		int num_point = imagePoints.cols();
 		double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
-		// MatrixXd depth_gt = MatrixXd::Zero(480, 640);
+		MatrixXd depth_gt = MatrixXd::Zero(480, 640);
 		for(int i=0;i<num_point;i++)
 		{
 			Vector3d p = imagePoints.col(i);
@@ -210,7 +210,7 @@ struct singlePointCloudMICost{
 			// *Xpt = reflectivity * 255.0; *Ypt = image_color * 255.0;
 			// Xpt++; Ypt++;
 
-			// depth_gt((int)(v), int(u)) = z / 10.0;
+			depth_gt((int)(v), int(u)) = z / 10.0;
 
 			double image_depth = (*_depth)((int)(v), (int)(u));
 			if(image_depth > 0 && image_depth < 100.0){
@@ -220,9 +220,9 @@ struct singlePointCloudMICost{
 				Xpt++; Ypt++;
 			}
 		}
-		// cv::Mat image;
-		// cv::eigen2cv(depth_gt, image);
-		// cv::imshow("velo_pointCloud", image / 1.0 );                   // Show our image inside it.
+		cv::Mat image;
+		cv::eigen2cv(depth_gt, image);
+		cv::imshow(windowName, image / 10.0 );                   // Show our image inside it.
 		// cv::waitKey(1);
 
 		if(Xpt-X > 1000){
@@ -256,11 +256,12 @@ int main(int argc, char **argv)
   // start calibrating
 	std::vector<double> timestamp_vec;
 	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
-	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	cv::namedWindow( "lsd_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity3", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	// cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	cv::namedWindow( "velo_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_pointCloud", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// double loss1 = 0.0, loss2 = 0.0;
@@ -284,61 +285,66 @@ int main(int argc, char **argv)
 		singlePointCloudMICost pcc(velo_pointCloud, depth, color);
 		costV.push_back(pcc);
 		// double residuals[3];
-		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
+		double residuals[3];
+		pcc(T_cam_velo_xi, residuals, "velo_depth");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
 		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
 		// for ( auto a:residuals ) std::cout<<a<<" "; std::cout<<std::endl;
-		// cv::Mat image_color;
-		// cv::eigen2cv(*color, image_color);
-		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
-		// cv::waitKey(0);
+		cv::Mat lsd_depth;
+		cv::eigen2cv(*depth, lsd_depth);
+		cv::imshow( "lsd_depth", lsd_depth / 10.0 );                   // Show our image inside it.
+
+		cv::Mat image_color;
+		cv::eigen2cv(*color, image_color);
+		cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
+		cv::waitKey(0);
 		// problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
 	}
-
-	double param[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
-	double costs[200] = {0.0};
-	double residuals[1], total_cost=0.0;
-	for(int i=0;i<200;i++){
-		std::cout<<i<<std::endl;
-		param[5] = 1.1 + i*0.001;
-		total_cost = 0.0;
-		for(auto block : costV){
-			block(param, residuals);
-			total_cost += residuals[0];
-		}
-		costs[i] = total_cost;
-	}
-	for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
-
 	return 0;
-	problem.SetParameterLowerBound(result, 0, -0.64);
-	problem.SetParameterUpperBound(result, 0, -0.62);
-	problem.SetParameterLowerBound(result, 1, 0.12);
-	problem.SetParameterUpperBound(result, 1, 0.14);
-	problem.SetParameterLowerBound(result, 2, 0.03);
-	problem.SetParameterUpperBound(result, 2, 0.04);
-	problem.SetParameterLowerBound(result, 3, 1.20);
-	problem.SetParameterUpperBound(result, 3, 1.21);
-	problem.SetParameterLowerBound(result, 4, -1.23);
-	problem.SetParameterUpperBound(result, 4, -1.21);
-	problem.SetParameterLowerBound(result, 5, 1.1);
-	problem.SetParameterUpperBound(result, 5, 1.4);
-
-	ceres::Solver::Options options;
-	// options.use_nonmonotonic_steps = true;
-	options.linear_solver_type = ceres::DENSE_QR;
-	options.minimizer_progress_to_stdout = true;
-	ceres::Solver::Summary summary;
-
-	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-	ceres::Solve ( options, &problem, &summary );
-	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-	std::cout<<summary.FullReport() <<std::endl;
-	std::cout<<"estimated T_cam3_velo : ";
-	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-	return 0;
+	// double param[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
+	// double costs[200] = {0.0};
+	// double residuals[1], total_cost=0.0;
+	// for(int i=0;i<200;i++){
+	// 	std::cout<<i<<std::endl;
+	// 	param[5] = 1.1 + i*0.001;
+	// 	total_cost = 0.0;
+	// 	for(auto block : costV){
+	// 		block(param, residuals);
+	// 		total_cost += residuals[0];
+	// 	}
+	// 	costs[i] = total_cost;
+	// }
+	// for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
+	//
+	// return 0;
+	// problem.SetParameterLowerBound(result, 0, -0.64);
+	// problem.SetParameterUpperBound(result, 0, -0.62);
+	// problem.SetParameterLowerBound(result, 1, 0.12);
+	// problem.SetParameterUpperBound(result, 1, 0.14);
+	// problem.SetParameterLowerBound(result, 2, 0.03);
+	// problem.SetParameterUpperBound(result, 2, 0.04);
+	// problem.SetParameterLowerBound(result, 3, 1.20);
+	// problem.SetParameterUpperBound(result, 3, 1.21);
+	// problem.SetParameterLowerBound(result, 4, -1.23);
+	// problem.SetParameterUpperBound(result, 4, -1.21);
+	// problem.SetParameterLowerBound(result, 5, 1.1);
+	// problem.SetParameterUpperBound(result, 5, 1.4);
+	//
+	// ceres::Solver::Options options;
+	// // options.use_nonmonotonic_steps = true;
+	// options.linear_solver_type = ceres::DENSE_QR;
+	// options.minimizer_progress_to_stdout = true;
+	// ceres::Solver::Summary summary;
+	//
+	// std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+	// ceres::Solve ( options, &problem, &summary );
+	// std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+	//
+	// std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
+	// std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
+	//
+	// std::cout<<summary.FullReport() <<std::endl;
+	// std::cout<<"estimated T_cam3_velo : ";
+	// for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
+	// return 0;
 }
