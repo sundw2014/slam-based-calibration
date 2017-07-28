@@ -37,6 +37,8 @@ struct KeyFrame
 
 std::vector<KeyFrame> keyFrames;
 
+#define PI 3.14159265
+
 double reflectivityMap[256] = {0,0.004702835332606325,0.01097328244274809,0.01635768811341331,0.02201472191930207,0.02719465648854962,0.03264721919302072,0.03769083969465649,0.04423391494002181,0.04900490730643402,0.05445747001090512,0.05963740458015267,0.06529443838604145,0.07020174482006543,0.07694929116684841,0.08165212649945475,0.08867230098146128,0.09841875681570338,0.1100054525627045,0.1136859323882225,0.1249318429661941,0.1363822246455834,0.1382224645583424,0.1386314067611777,0.1401308615049073,0.1423800436205016,0.1455152671755725,0.1505588876772083,0.1502862595419847,0.1508996728462377,0.1547846237731734,0.1571019629225736,0.159896401308615,0.1640539803707743,0.1695747001090513,0.1748909487459106,0.1793211559432933,0.1834787350054526,0.1877726281352236,0.1915894220283533,0.1964967284623773,0.2001772082878953,0.2037895310796074,0.2080152671755725,0.2119002181025082,0.2157170119956379,0.2204198473282443,0.2240321701199564,0.2290757906215921,0.2329607415485278,0.2355507088331516,0.2401172300981461,0.2431161395856052,0.2465921483097055,0.251226826608506,0.2547709923664122,0.2577017448200654,0.2613140676117776,0.2632224645583424,0.2675163576881134,0.2714013086150491,0.2751499454743729,0.2780806979280262,0.2814203925845147,0.2846237731733915,0.2875545256270447,0.2911668484187568,0.2966875681570338,0.2977099236641221,0.3007769901853871,0.3060932388222465,0.3066384950926936,0.308819520174482,0.3153625954198473,0.3163167938931298,0.3191793893129771,0.3248364231188658,0.3260632497273719,0.3286532170119956,0.3329471101417666,0.33703653217012,0.3403080697928026,0.3447382769901854,0.3481461286804798,0.348623227917121,0.352917121046892,0.3570747001090512,0.3605507088331516,0.3655943293347874,0.3679116684841875,0.369479280261723,0.3746592148309705,0.3763631406761178,0.3828380588876772,0.3822246455834242,0.3856324972737186,0.3865866957470011,0.3911532170119956,0.3904716466739367,0.3938113413304253,0.3931297709923664,0.3965376226826609,0.4001499454743729,0.4019901853871319,0.4038304252998909,0.4052617230098146,0.4089422028353326,0.4105779716466739,0.4145992366412214,0.4179389312977099,0.419711014176663,0.4219601962922573,0.4242775354416576,0.4212104689203926,0.4262540894220284,0.4223009814612868,0.4242775354416576,0.4199154852780807,0.4250954198473282,0.4247546346782988,0.4319111232279171,0.4271401308615049,0.4267311886586696,0.4294574700109051,0.430139040348964,0.4351826608505998,0.4348418756815703,0.4375,0.4381815703380589,0.4443157033805889,0.4494274809160305,0.4606733914940022,0.4415894220283533,0.4445201744820065,0.4466330425299891,0.4383860414394766,0.4417257360959651,0.4444520174482007,0.4525627044711014,0.4415894220283533,0.4548800436205017,0.4484732824427481,0.446087786259542,0.4525627044711014,0.4682388222464559,0.4636723009814613,0.4616275899672846,0.4628544165757906,0.4703516902944384,0.4647628135223555,0.4790076335877863,0.4857551799345692,0.4882769901853871,0.4617639040348964,0.4717148309705562,0.472396401308615,0.4691248636859324,0.4814612868047983,0.4726008724100327,0.4909351145038168,0.4845283533260633,0.5074972737186477,0.4941384950926936,0.5018402399127589,0.5002726281352236,0.5071564885496184,0.5080425299890948,0.4946837513631407,0.5109732824427481,0.5034078516902945,0.5027262813522355,0.496319520174482,0.5019765539803708,0.5014994547437296,0.5267857142857143,0.5163576881134133,0.5331243184296619,0.5123364231188658,0.5231733914940022,0.5370774263904035,0.528830425299891,0.523854961832061,0.5279443838604144,0.5282851690294439,0.5298527808069793,0.5383724100327154,0.5479825517993457,0.5794029443838604,0.5726553980370774,0.5669983642311887,0.5688386041439476,0.5661123227917121,0.5761314067611778,0.5892857142857143,0.5811750272628136,0.5762677208287895,0.5814476553980371,0.5632497273718647,0.5754498364231189,0.5839013086150491,0.5942611777535441,0.5873091603053435,0.5956243184296619,0.5951472191930207,0.5892857142857143,0.6112322791712105,0.5931706652126499,0.6068702290076335,0.5981461286804798,0.6129362050163577,0.6127317339149401,0.6105507088331515,0.6020310796074155,0.6151172300981461,0.6175027262813523,0.6339967284623773,0.6270447110141767,0.6174345692475464,0.6198200654307524,0.6603735005452562,0.6449018538713195,0.6422437295528899,0.655602508178844,0.6571019629225736,0.6457197382769901,0.6714149400218102,0.6715512540894221,0.6774127589967285,0.682592693565976,0.6863413304252999,0.6806842966194111,0.7049482006543075,0.7188522355507089,0.7279852780806979,0.7312568157033806,0.7266221374045801,0.7455697928026173,0.7454334787350054,0.764721919302072,0.7780125408942202,0.7912350054525628,0.7994820065430752,0.8001635768811342,0.8124318429661941,0.8156352235550709,0.8297437295528899,0.8304252998909487,0.8577562704471101,0.8743184296619411,0.8723418756815703,0.8870637949836423,0.9051935659760088,0.9236641221374046,0.9223691384950927,0.9431570338058888,1};
 
 uint32_t image_w = 0, image_h = 0;
@@ -176,14 +178,26 @@ struct singlePointCloudMICost{
 	DepthImage _depth;
 	DepthImage _color;
 	// template <typename T>
-	bool operator()(const double* const xi_cam_velo, double* residuals, std::string windowName) const
+	bool operator()(const double* const xi_cam_velo, double* residuals) const//, std::string windowName) const
 	{
-		typedef Matrix<double,6,1> Vector6d;
-		Vector6d xi;
-		for (int i=0;i<6;i++) xi(i) = double(xi_cam_velo[i]);// = Map<const Vector6d>(xi_cam_velo,6,1);
-		MatrixXd T_cam_velo = Sophus::SE3d::exp(xi).matrix();
+		// typedef Matrix<double,6,1> Vector6d;
+		// Vector6d xi;
+		// for (int i=0;i<6;i++) xi(i) = double(xi_cam_velo[i]);// = Map<const Vector6d>(xi_cam_velo,6,1);
+		// MatrixXd T_cam_velo = Sophus::SE3d::exp(xi).matrix();
+		Matrix3d R;
+		R = AngleAxisd(xi_cam_velo[5]/180.0*PI, Vector3d::UnitZ())\
+  		* AngleAxisd(xi_cam_velo[4]/180.0*PI, Vector3d::UnitY())\
+  		* AngleAxisd(xi_cam_velo[3]/180.0*PI, Vector3d::UnitX());
+
+		typedef Matrix<double,3,1> Vector3d;
+		Vector3d _t = Map<const Vector3d>(xi_cam_velo,3,1);
+		Translation<double,3> t(_t);
+
+		MatrixXd T_cam_velo = (t * R).matrix();
+
 		MatrixXd _pc_homo(4, _pc->cols());
 		_pc_homo << _pc->topRows(3), MatrixXd::Ones(1, _pc->cols());
+		// std::cout<<T_cam_velo<<std::endl;
 		// std::cout<<T_cam_velo.topRows(3)<<std::endl;
 		// std::cout<<cameraK<<std::endl;
 		// std::cout<<_pc->leftCols(10)<<std::endl;
@@ -194,7 +208,7 @@ struct singlePointCloudMICost{
 
 		int num_point = imagePoints.cols();
 		double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
-		MatrixXd depth_gt = MatrixXd::Zero(480, 640);
+		// MatrixXd depth_gt = MatrixXd::Zero(480, 640);
 		for(int i=0;i<num_point;i++)
 		{
 			Vector3d p = imagePoints.col(i);
@@ -210,7 +224,7 @@ struct singlePointCloudMICost{
 			// *Xpt = reflectivity * 255.0; *Ypt = image_color * 255.0;
 			// Xpt++; Ypt++;
 
-			depth_gt((int)(v), int(u)) = z / 10.0;
+			// depth_gt((int)(v), int(u)) = z / 10.0;
 
 			double image_depth = (*_depth)((int)(v), (int)(u));
 			if(image_depth > 0 && image_depth < 100.0){
@@ -220,9 +234,9 @@ struct singlePointCloudMICost{
 				Xpt++; Ypt++;
 			}
 		}
-		cv::Mat image;
-		cv::eigen2cv(depth_gt, image);
-		cv::imshow(windowName, image / 10.0 );                   // Show our image inside it.
+		// cv::Mat image;
+		// cv::eigen2cv(depth_gt, image);
+		// cv::imshow("velo_pointCloud", image / 1.0 );                   // Show our image inside it.
 		// cv::waitKey(1);
 
 		if(Xpt-X > 1000){
@@ -256,18 +270,17 @@ int main(int argc, char **argv)
   // start calibrating
 	std::vector<double> timestamp_vec;
 	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
-	cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "lsd_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity3", cv::WINDOW_AUTOSIZE );// Create a window for display.
-	cv::namedWindow( "velo_depth", cv::WINDOW_AUTOSIZE );// Create a window for display.
+	// cv::namedWindow( "velo", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_error", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_pointCloud", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// double loss1 = 0.0, loss2 = 0.0;
 
 	ceres::Problem problem;
-	double T_cam_velo_xi[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.20154};
+	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
 	double T_cam_velo_xi_error[6] = {-0.532169, 0.237709, 0.046695, 1.10717, -1.11912, 1.30154};
 	double result[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
 	double T_cam_velo_xi_result[6] = {0.11466, 1.19922, -0.587118, 1.04014, -1.06916, 1.44598};
@@ -284,67 +297,60 @@ int main(int argc, char **argv)
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
 		singlePointCloudMICost pcc(velo_pointCloud, depth, color);
 		costV.push_back(pcc);
-		// double residuals[3];
-		double residuals[3];
-		pcc(T_cam_velo_xi, residuals, "velo_depth");
+		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
 		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
 		// for ( auto a:residuals ) std::cout<<a<<" "; std::cout<<std::endl;
-		cv::Mat lsd_depth;
-		cv::eigen2cv(*depth, lsd_depth);
-		cv::imshow( "lsd_depth", lsd_depth / 10.0 );                   // Show our image inside it.
-
-		cv::Mat image_color;
-		cv::eigen2cv(*color, image_color);
-		cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
-		cv::waitKey(0);
+		// cv::Mat image_color;
+		// cv::eigen2cv(*color, image_color);
+		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
+		// cv::waitKey(0);
 		// problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
 	}
+	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
+	double costs[200] = {0.0};
+	double residuals[1], total_cost=0.0;
+	for(int i=0;i<200;i++){
+		std::cout<<i<<std::endl;
+		param[5] = -95 - i/200.0*20.0;
+		total_cost = 0.0;
+		for(auto block : costV){
+			block(param, residuals);
+			total_cost += (residuals[0] * residuals[0]);
+		}
+		costs[i] = total_cost;
+	}
+	for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
+
 	return 0;
-	// double param[6] = {-0.632169, 0.137709, 0.036695, 1.20717, -1.21912, 1.39};
-	// double costs[200] = {0.0};
-	// double residuals[1], total_cost=0.0;
-	// for(int i=0;i<200;i++){
-	// 	std::cout<<i<<std::endl;
-	// 	param[5] = 1.1 + i*0.001;
-	// 	total_cost = 0.0;
-	// 	for(auto block : costV){
-	// 		block(param, residuals);
-	// 		total_cost += residuals[0];
-	// 	}
-	// 	costs[i] = total_cost;
-	// }
-	// for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
-	//
-	// return 0;
-	// problem.SetParameterLowerBound(result, 0, -0.64);
-	// problem.SetParameterUpperBound(result, 0, -0.62);
-	// problem.SetParameterLowerBound(result, 1, 0.12);
-	// problem.SetParameterUpperBound(result, 1, 0.14);
-	// problem.SetParameterLowerBound(result, 2, 0.03);
-	// problem.SetParameterUpperBound(result, 2, 0.04);
-	// problem.SetParameterLowerBound(result, 3, 1.20);
-	// problem.SetParameterUpperBound(result, 3, 1.21);
-	// problem.SetParameterLowerBound(result, 4, -1.23);
-	// problem.SetParameterUpperBound(result, 4, -1.21);
-	// problem.SetParameterLowerBound(result, 5, 1.1);
-	// problem.SetParameterUpperBound(result, 5, 1.4);
-	//
-	// ceres::Solver::Options options;
-	// // options.use_nonmonotonic_steps = true;
-	// options.linear_solver_type = ceres::DENSE_QR;
-	// options.minimizer_progress_to_stdout = true;
-	// ceres::Solver::Summary summary;
-	//
-	// std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-	// ceres::Solve ( options, &problem, &summary );
-	// std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-	//
-	// std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-	// std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-	//
-	// std::cout<<summary.FullReport() <<std::endl;
-	// std::cout<<"estimated T_cam3_velo : ";
-	// for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-	// return 0;
+	problem.SetParameterLowerBound(result, 0, -0.64);
+	problem.SetParameterUpperBound(result, 0, -0.62);
+	problem.SetParameterLowerBound(result, 1, 0.12);
+	problem.SetParameterUpperBound(result, 1, 0.14);
+	problem.SetParameterLowerBound(result, 2, 0.03);
+	problem.SetParameterUpperBound(result, 2, 0.04);
+	problem.SetParameterLowerBound(result, 3, 1.20);
+	problem.SetParameterUpperBound(result, 3, 1.21);
+	problem.SetParameterLowerBound(result, 4, -1.23);
+	problem.SetParameterUpperBound(result, 4, -1.21);
+	problem.SetParameterLowerBound(result, 5, 1.1);
+	problem.SetParameterUpperBound(result, 5, 1.4);
+
+	ceres::Solver::Options options;
+	// options.use_nonmonotonic_steps = true;
+	options.linear_solver_type = ceres::DENSE_QR;
+	options.minimizer_progress_to_stdout = true;
+	ceres::Solver::Summary summary;
+
+	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+	ceres::Solve ( options, &problem, &summary );
+	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
+	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
+
+	std::cout<<summary.FullReport() <<std::endl;
+	std::cout<<"estimated T_cam3_velo : ";
+	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
+	return 0;
 }
