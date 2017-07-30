@@ -5,7 +5,7 @@ def euler_matrix(ai, aj, ak):
     cc, cs = ci*ck, ci*sk
     sc, ss = si*ck, si*sk
 
-    M = sympy.matrices.eye(4)
+    M = sympy.eye(4)
     if repetition:
         M[i, i] = cj
         M[i, j] = sj*si
@@ -29,10 +29,18 @@ def euler_matrix(ai, aj, ak):
     return M
 
 def compose_matrix(angles=None, translate=None):
-    M = sympy.matrices.eye(4)
+    M = sympy.eye(4)
     if translate is not None:
         M[:3, 3] = translate[:3]
     if angles is not None:
         R = euler_matrix(angles[0], angles[1], angles[2])
         M[0:3, 0:3] = R[0:3, 0:3]
     return M
+
+def getCameraModelDiff(K):
+    T = sympy.MatrixSymbol('T', 6, 1)
+    P_L = sympy.MatrixSymbol('P_L', 4, 1)
+    K = sympy.MatrixSymbol('K', 3, 3)
+    P_C = K * compose(angles = T[3:6], translate = T[0:3]) * P_L
+
+    Jacabian = P_C.jacobian(T)
