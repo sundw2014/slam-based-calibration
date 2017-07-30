@@ -25,20 +25,33 @@ TEST(DEFAULT, test1D)
   }
 }
 
-// TEST(DEFAULT, TEST2D)
-// {
-//   Probability<2>::SampleBuffer buffer;
-//   buffer << ;
-//   double querys1[] = {};
-//   double querys2[] = {};
-//   double ground_truth[] = {}
-//   Probability<2> probability(buffer);
-//   for(int i=0;i<sizeof(querys1);i++){
-//     Probability<2>::QueryPoint query;
-//     query << querys1[i], querys2[i];
-//     EXPECT_DOUBLE_EQ(probability.p(query), ground_truth[i]);
-//   }
-// }
+TEST(DEFAULT, TEST2D)
+{
+  Probability<2>::SampleBuffer buffer;
+
+  double _buffer1[] = {
+    #include "data/normal2D_1.txt"
+  };
+  double _buffer2[] = {
+    #include "data/normal2D_2.txt"
+  };
+  for( int i=0;i<sizeof(_buffer1)/sizeof(double);i++){
+    buffer << _buffer1[i], _buffer2[i];
+  }
+  double querys[] = {
+    #include "data/querys.txt"
+  };
+  double ground_truth[] = {
+    #include "data/result1.txt"
+  };
+
+  Probability<1> probability(buffer);
+  for(int i=0;i<sizeof(querys)/sizeof(double);i++){
+    Probability<1>::QueryPoint query;
+    query << querys[i], querys[i];
+    EXPECT_NEAR(probability.p(query), ground_truth[i], 1e-3);
+  }
+}
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
