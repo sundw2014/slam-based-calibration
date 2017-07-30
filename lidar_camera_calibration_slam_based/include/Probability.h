@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
+// #include <iostream>
 
 template<std::size_t D>
 class Probability
@@ -33,10 +34,14 @@ double Probability<D>::p(QueryPoint query, Eigen::Matrix<double, D, D> *Sigma)
 {
   if(Sigma == nullptr){
     Sigma = new Eigen::Matrix<double, D, D>();
-    *Sigma = Eigen::Matrix<double, D, D>::Ones();
+    *Sigma = Eigen::Matrix<double, D, D>::Identity();
     (*Sigma) = (*Sigma) * 0.1;
   }
   Eigen::MatrixXd X_shifted_transposed = (_sampleBuffer.colwise() - query).transpose();
+  // std::cout<<X_shifted_transposed.row(1)<<std::endl;
+  // std::cout<<1.0 / sqrt((2 * M_PI * (*Sigma)).determinant())<<std::endl;
+  // std::cout<<(X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).row(1)<<std::endl;
+  // std::cout<<(X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).rowwise().sum().row(1)<<std::endl;
   Eigen::MatrixXd k = 1.0 / sqrt((2 * M_PI * (*Sigma)).determinant()) * \
     (-0.5 * (X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).rowwise().sum().transpose())\
     .array().exp().matrix(); // shape = 1*N

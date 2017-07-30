@@ -35,19 +35,21 @@ TEST(DEFAULT, TEST2D)
   double _buffer2[] = {
     #include "data/normal2D_2.txt"
   };
-  for( int i=0;i<sizeof(_buffer1)/sizeof(double);i++){
-    buffer << _buffer1[i], _buffer2[i];
+  buffer.resize(2, sizeof(_buffer1)/sizeof(double));
+  for(int i=0;i<sizeof(_buffer1)/sizeof(double);i++){
+    buffer(0,i) = _buffer1[i];
+    buffer(1,i) = _buffer2[i];
   }
   double querys[] = {
     #include "data/querys.txt"
   };
   double ground_truth[] = {
-    #include "data/result1.txt"
+    #include "data/result2.txt"
   };
 
-  Probability<1> probability(buffer);
+  Probability<2> probability(buffer);
   for(int i=0;i<sizeof(querys)/sizeof(double);i++){
-    Probability<1>::QueryPoint query;
+    Probability<2>::QueryPoint query;
     query << querys[i], querys[i];
     EXPECT_NEAR(probability.p(query), ground_truth[i], 1e-3);
   }
