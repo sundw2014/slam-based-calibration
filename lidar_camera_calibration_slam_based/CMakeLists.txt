@@ -120,7 +120,7 @@ find_package(Ceres QUIET REQUIRED)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
   "/usr/include/eigen3"
@@ -139,7 +139,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(calibrationWithLSD src/calibrationWithLSD.cpp)
+add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -202,7 +202,7 @@ target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_lidar_camera_calibration_slam_based.cpp)
+catkin_add_gtest(utest_probability test/utest_probability.cpp src/MICostFunction.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

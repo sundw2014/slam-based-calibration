@@ -16,7 +16,7 @@
 #include "MIToolbox/CalculateProbability.h"
 #include "MIToolbox/MutualInformation.h"
 #include <chrono>
-
+#include "MICostFunction.h"
 using namespace Eigen;
 using DepthImage = MatrixXd *;
 using PointCloud = MatrixXd *;
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 
 	ceres::Problem problem;
 	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
-	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
+	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838}; //FIXME rad
 	std::vector<singlePointCloudMICost> costV;
 
 	for(auto kF : keyFrames){
@@ -293,8 +293,8 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		singlePointCloudMICost pcc(velo_pointCloud, depth, color);
-		costV.push_back(pcc);
+		// singlePointCloudMICost pcc(velo_pointCloud, depth, color);
+		// costV.push_back(pcc);
 		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
 		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
@@ -303,7 +303,7 @@ int main(int argc, char **argv)
 		// cv::eigen2cv(*color, image_color);
 		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
 		// cv::waitKey(0);
-		// problem.AddResidualBlock(new ceres::NumericDiffCostFunction<singlePointCloudMICost, ceres::RIDDERS, 1, 6> (new singlePointCloudMICost ( velo_pointCloud, depth, color )), nullptr, result);
+		problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
 	}
 	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -164.46746895,  -89.61368332, -105.99353838};
 	double costs[200] = {0.0};

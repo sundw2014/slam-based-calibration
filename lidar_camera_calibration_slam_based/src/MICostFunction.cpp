@@ -13,7 +13,7 @@ public:
     (*_pc_homo) << _pc->topRows(3), MatrixXd::Ones(1, _pc->cols());
 
     _depth = new MatrixXd();
-    (*_depth) = depth;
+    (*_depth) = (*depth);
     // filtering
     // TODO
     for(int i=0;i<_depth->rows();i++){
@@ -118,6 +118,7 @@ public:
       {
         P_L_Matched.col(i) = _pc_homo.col(P_L_Matched_idx[i]);
       }
+      delete[] P_L_Matched_idx;
       MatrixXd P_C_Matched = cameraK * (T_cam_velo.topRows(3) * P_L_Matched);
 
       // 4. calculate the residuals (inverse of MutualInformation)
