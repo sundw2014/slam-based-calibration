@@ -2,6 +2,10 @@
 #include "Probability.h"
 #include "MIToolbox/MutualInformation.h"
 #include "Jacobian_P_T.h"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Dense>
+#include <ceres/ceres.h>
 
 using namespace Eigen;
 using namespace Ceres;

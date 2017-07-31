@@ -203,6 +203,7 @@ target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 
 ## Add gtest based cpp test target and link libraries
 catkin_add_gtest(utest_probability test/utest_probability.cpp src/MICostFunction.cpp)
+catkin_add_gtest(utest_Jacobian_T_P test/utest_Jacobian_T_P.cpp src/Jacobian_T_P.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
