@@ -31,7 +31,7 @@ def euler_matrix(ai, aj, ak):
 def compose_matrix(angles=None, translate=None):
     M = sympy.eye(4)
     if translate is not None:
-        M[:3, 3] = translate[:3]
+        M[:3, 3] = sympy.Matrix(translate[0:3])
     if angles is not None:
         R = euler_matrix(angles[0], angles[1], angles[2])
         M[0:3, 0:3] = R[0:3, 0:3]
