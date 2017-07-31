@@ -79,8 +79,8 @@ def getCameraModelDiff(K):
 
 fx = 500
 fy = 500
-cx = 0
-cy = 0
+cx = 100
+cy = -100
 K = sympy.Matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
 J = getCameraModelDiff(K)
 
