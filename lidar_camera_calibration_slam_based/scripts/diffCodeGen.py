@@ -70,6 +70,18 @@ def getCameraModelDiff(K):
     T = sympy.MatrixSymbol('T', 6, 1)
     P_L = sympy.MatrixSymbol('P_L', 4, 1)
     K = sympy.MatrixSymbol('K', 3, 3)
-    P_C = K * compose(angles = T[3:6], translate = T[0:3]) * P_L
+    T_C_L = compose_matrix(angles = T[3:6], translate = T[0:3])[0:3, :]
+    P_C = K * T_C_L * P_L
 
-    Jacabian = P_C.jacobian(T)
+    Jacobian = sympy.Matrix(P_C).jacobian(T)
+    return Jacobian
+
+from sympy.utilities.codegen import *
+[(c_name, c_code), (h_name, c_header)] = codegen([('Jacobian_P_T', J)], 'C')
+
+f = open(c_name, 'w')
+f.write(c_code)
+f.close()
+f = open(h_name, 'w')
+f.write(c_header)
+f.close()
