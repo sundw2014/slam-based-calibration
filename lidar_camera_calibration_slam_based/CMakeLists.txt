@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(lidar_camera_calibration_slam_based)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -113,7 +113,7 @@ catkin_package(
 ## Build ##
 ###########
 
-find_package( Sophus REQUIRED )
+find_package(Sophus REQUIRED )
 find_package(OpenCV REQUIRED)
 find_package(Ceres QUIET REQUIRED)
 
@@ -123,7 +123,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
-  "/usr/include/eigen3"
+  "/home/sundw/workspace/eigen-eigen-5a0156e40feb"
 )
 
 ## Declare a C++ library
@@ -139,7 +139,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.cpp)
+add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.cpp src/Jacobian_P_T.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -149,7 +149,7 @@ add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(calibrationWithLSD ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(calibrationWithLSD
@@ -202,8 +202,8 @@ target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(utest_probability test/utest_probability.cpp src/MICostFunction.cpp)
-catkin_add_gtest(utest_Jacobian_T_P test/utest_Jacobian_T_P.cpp src/Jacobian_T_P.cpp)
+catkin_add_gtest(utest_probability test/utest_probability.cpp)
+catkin_add_gtest(utest_Jacobian_P_T test/utest_Jacobian_P_T.cpp src/Jacobian_P_T.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

@@ -4,6 +4,11 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
+#define fx 374.672943115
+#define fy 930.62701416
+#define cx 316.473266602
+#define cy 239.77923584
+
 using namespace Eigen;
 
 MatrixXd getImagePoint(const MatrixXd &P_L, const MatrixXd &K, const MatrixXd &xi_cam_velo);
@@ -11,9 +16,9 @@ MatrixXd getImagePoint(const MatrixXd &P_L, const MatrixXd &K, const MatrixXd &x
 TEST(DEFAULT, gradientVerification)
 {
   Matrix3d K;
-  K << 500, 0, 100,
-                0, 500, -100,
-                0,   0,    1;
+  K << fx,  0, cx,
+  0, fy, cy,
+  0,  0,  1;
   Matrix<double, 4, 1> P_L;
   P_L << 1, 1, 3, 1;
   Matrix<double, 6, 1> xi_cam_velo;
@@ -52,4 +57,3 @@ int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
-

@@ -77,17 +77,30 @@ def getCameraModelDiff(K):
     return Jacobian
 
 
-fx = 500
-fy = 500
-cx = 100
-cy = -100
+fx = 374.672943115
+fy = 930.62701416
+cx = 316.473266602
+cy = 239.77923584
 K = sympy.Matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
 J = getCameraModelDiff(K)
 
 from sympy.utilities.codegen import *
 [(c_name, c_code), (h_name, c_header)] = codegen([('Jacobian_P_T', J)], 'C')
 
-f = open(c_name, 'w')
+c_code = c_code.replace('sin(T[3])', 'sinT3')
+c_code = c_code.replace('sin(T[4])', 'sinT4')
+c_code = c_code.replace('sin(T[5])', 'sinT5')
+c_code = c_code.replace('cos(T[3])', 'cosT3')
+c_code = c_code.replace('cos(T[4])', 'cosT4')
+c_code = c_code.replace('cos(T[5])', 'cosT5')
+
+'''
+       double sinT3 = sin(T[3]); double cosT3 = cos(T[3]);
+       double sinT4 = sin(T[4]); double cosT4 = cos(T[4]);
+       double sinT5 = sin(T[5]); double cosT5 = cos(T[5]);
+'''
+
+f = open(c_name+'pp', 'w')
 f.write(c_code)
 f.close()
 f = open(h_name, 'w')

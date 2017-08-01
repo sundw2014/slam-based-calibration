@@ -35,7 +35,7 @@ std::vector<KeyFrame> keyFrames;
 
 uint32_t image_w = 0, image_h = 0;
 int frame_count = 0;
-#define NUM_FRAMES_COUNT_LIMIT 30
+#define NUM_FRAMES_COUNT_LIMIT 0
 
 void keyFrameCallback(const lidar_camera_calibration_slam_based::keyframeMsg& msg)
 {
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 	ceres::Problem problem;
 	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-	std::vector<MICostFunction> costV;
+	std::vector<MICostFunction *> costV;
 
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		MICostFunction pcc(velo_pointCloud, depth, color);
+		MICostFunction *pcc = new MICostFunction(velo_pointCloud, depth, color);
 		costV.push_back(pcc);
 		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
@@ -218,8 +218,8 @@ int main(int argc, char **argv)
 		std::cout<<i<<std::endl;
 		param[0] = -1.0 + i/200.0*1.0;
 		total_cost = 0.0;
-		for(auto block : costV){
-			block.Evaluate(_param, residuals, nullptr);
+		for(int j=0;j<costV.size();j++){
+			costV[0]->Evaluate(_param, residuals, nullptr);
 			total_cost += (residuals[0] * residuals[0]);
 		}
 		costs[i] = total_cost;
@@ -232,11 +232,16 @@ int main(int argc, char **argv)
 		double residuals[2];
 		double jacobian[6];
 		double *jacobians[1] = {jacobian};
-		costV[0].Evaluate(_param, residuals, jacobians);
-		#define DERIVATE_STEP 1e-3
-		param[0] += DERIVATE_STEP;
-		costV[0].Evaluate(_param, residuals+1, nullptr);
-		std::cout<<residuals[0]<<" "<<residuals[1]<<" "<<jacobian[0]<<std::endl;
+		for(int i=0;i<200;i++){
+			std::cout<<i<<std::endl;
+			param[0] = -1.0 + i/200.0*1.0;
+			costV[0]->Evaluate(_param, residuals, jacobians);
+			#define DERIVATE_STEP 1e-3
+			param[0] += DERIVATE_STEP;
+			costV[0]->Evaluate(_param, residuals+1, nullptr);
+			std::cout<<(residuals[1] - residuals[0]) / DERIVATE_STEP <<", "<<jacobian[0]<<std::endl;
+		}
+
 	}
 
 

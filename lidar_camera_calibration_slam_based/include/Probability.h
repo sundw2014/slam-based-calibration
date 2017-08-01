@@ -18,7 +18,7 @@ public:
   using QueryPoint = Eigen::Matrix<double, D, 1>;
 public:
   Probability(const SampleBuffer &sampleBuffer);
-  double p(QueryPoint query, Eigen::Matrix<double, D, D> *Sigma=nullptr);
+  double p(const QueryPoint &query, const Eigen::Matrix<double, D, D> *Sigma=nullptr) const;
 private:
   SampleBuffer _sampleBuffer;
 };
@@ -30,12 +30,11 @@ Probability<D>::Probability(const SampleBuffer &sampleBuffer)
 }
 
 template<std::size_t D>
-double Probability<D>::p(QueryPoint query, Eigen::Matrix<double, D, D> *Sigma)
+double Probability<D>::p(const QueryPoint &query, const Eigen::Matrix<double, D, D> *Sigma) const
 {
   if(Sigma == nullptr){
     Sigma = new Eigen::Matrix<double, D, D>();
-    *Sigma = Eigen::Matrix<double, D, D>::Identity();
-    (*Sigma) = (*Sigma) * 0.1;
+    *const_cast<Eigen::Matrix<double, D, D> *>(Sigma) = Eigen::Matrix<double, D, D>::Identity() * 0.1;
   }
   Eigen::MatrixXd X_shifted_transposed = (_sampleBuffer.colwise() - query).transpose();
   // std::cout<<X_shifted_transposed.row(1)<<std::endl;
