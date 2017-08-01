@@ -8,11 +8,23 @@
 #include <ceres/ceres.h>
 
 using namespace Eigen;
-using namespace Ceres;
+// using namespace Ceres;
 
-class MICostFunction : public SizedCostFunction<1,6> {
+#define image_w 640
+#define image_h 480
+#define fx
+#define fy
+#define cx
+#define cy
+
+class MICostFunction : public Ceres::SizedCostFunction<1,6> {
 public:
   MICostFunction(const PointCloud pc, const DepthImage depth, const DepthImage color):_pc(pc), _color(color){
+
+    cameraK << fx,  0, cx,
+                0, fy, cy,
+                0,  0,  1;
+
     _pc_homo = new MatrixXd(4, _pc->cols());
     (*_pc_homo) << _pc->topRows(3), MatrixXd::Ones(1, _pc->cols());
 
@@ -70,7 +82,7 @@ public:
 
       // 2. find all of the corresponding points
       // 2.1 project this PointCloud to image plane
-      MatrixXd imagePoints = cameraK * (T_cam_velo.topRows(3) * _pc_homo); //FIXME
+      MatrixXd imagePoints = cameraK * T_cam_velo.topRows(3) * _pc_homo;
       // 2.2 find all of the corresponding points
       int num_point = imagePoints.cols();
       double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
@@ -99,22 +111,22 @@ public:
 
       // 3. create some temp vars
       // 3.1 create pdf objects
-      Probability<1>::SampleBuffer buffer;
-      buffer.resize(2, (Xpt-X));
+      Probability<2>::SampleBuffer sampleBuffer;
+      sampleBuffer.resize(2, (Xpt-X));
       for(int i=0;i<(Xpt-X);i++){
-        buffer(0,i) = X[i];
-        buffer(1,i) = Y[i];
+        sampleBuffer(0,i) = X[i];
+        sampleBuffer(1,i) = Y[i];
       }
-      delete[] X;
+      delete[] X;//FIXME can speedup with Map
       delete[] Y;
-      Probability<1> p_x(buffer.row(0));
-      Probability<1> p_y(buffer.row(1));
-      Probability<2> p_xy(buffer);
+      Probability<1> p_x(sampleBuffer.row(0));
+      Probability<1> p_y(sampleBuffer.row(1));
+      Probability<2> p_xy(sampleBuffer);
       Matrix<double, 4, 1> integral_bound;
-      integral_bound << buffer.row(0).minCoeff(),
-        buffer.row(0).maxCoeff(),
-        buffer.row(1).minCoeff(),
-        buffer.row(1).maxCoeff();
+      integral_bound << sampleBuffer.row(0).minCoeff(),
+        sampleBuffer.row(0).maxCoeff(),
+        sampleBuffer.row(1).minCoeff(),
+        sampleBuffer.row(1).maxCoeff();
 
       // 3.2 create P_L_Matched, a subset of raw point cloud matched with image points, and corresponding P_C_Matched
       MatrixXd P_L_Matched(4, P_L_Matched_idx_Pt - P_L_Matched_idx);
@@ -123,18 +135,17 @@ public:
         P_L_Matched.col(i) = _pc_homo.col(P_L_Matched_idx[i]);
       }
       delete[] P_L_Matched_idx;
-      MatrixXd P_C_Matched = cameraK * (T_cam_velo.topRows(3) * P_L_Matched);
+      MatrixXd P_C_Matched = cameraK * T_cam_velo.topRows(3) * P_L_Matched;
 
       // 4. calculate the residuals (inverse of MutualInformation)
-      residuals[0] = 1.0 / mi(buffer.row(0).data(), buffer.row(1).data(), buffer.cols());
+      residuals[0] = 1.0 / mi(sampleBuffer.row(0).data(), sampleBuffer.row(1).data(), sampleBuffer.cols());
 
       if (!jacobians) return true;
       double* jacobian = jacobians[0];
       if (!jacobian) return true;
 
       // 5. calculate the jacobian matrix
-      // sampleGradients 6xN (N = P_L_Matched.cols())
-      // beta_x(X)
+      // 5.1 sampleGradients 6xN (N = P_L_Matched.cols())
       MatrixXd sampleGradients(6, P_L_Matched.cols());
       for(int i=0; i<P_L_Matched.cols(); i++)
       {
@@ -149,14 +160,14 @@ public:
 
         // beta_x
         Matrix<double, 2, 1> X;
-        X << buffer(0, i), buffer(1, i);
+        X << sampleBuffer(0, i), sampleBuffer(1, i);
         MatrixXd beta_x(2, 1) = getBeta_x(p_x, p_y, p_xy, X);
 
         // Jacobian_X_xi
         MatrixXd Jacobian_X_xi(6, 2);
         MatrixXd Jacobian_uvz_xi = getJacobian_uvz_xi(P_L, xi_cam_velo); // 6x3
         MatrixXd Jacobian_D_uv(2, 1); Jacobian_D_uv << _depth_gradient_x(int(v), int(u)), _depth_gradient_y(int(v), int(u));
-        Jacobian_X_xi.col(0) = Jacobian_uvz_xi.leftcols(2) * Jacobian_D_uvT;
+        Jacobian_X_xi.col(0) = Jacobian_uvz_xi.leftCols(2) * Jacobian_D_uvT;
         Jacobian_X_xi.col(1) = Jacobian_uvz_xi.col(2);
 
         // gradient
@@ -164,6 +175,7 @@ public:
 
         sampleGradients.col(i) = gradient;
       }
+      // 5.2 J = E(sampleGradients)
       MatrixXd J(6,1) = sampleGradients.rowwise().mean();
       for(int i=0; i<6; i++){
         jacobian[i] = J(i, 0);
@@ -206,7 +218,6 @@ public:
     MatrixXd getJacobian_uvz_xi(const MatrixXd &P_L, const double *xi_cam_velo)
     {
       MatrixXd Jacobian(6,3);
-      //FIXME storage order?
       Jacobian_P_T(P_L.data(), xi_cam_velo, Jacobian.data());
       return Jacobian;
     }
@@ -218,4 +229,5 @@ private:
   DepthImage _color;
   DepthImage _depth_gradient_x;
   DepthImage _depth_gradient_y;
+  Matrix<double, 3, 3> cameraK;
 };
