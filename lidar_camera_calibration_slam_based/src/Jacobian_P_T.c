@@ -9,9 +9,9 @@
 #include <math.h>
 
 void Jacobian_P_T(const double *P_L, const double *T, double *out_8569497029995662505) {
-   sinT3 = sin(T[3]); cosT3 = cos(T[3]);
-   sinT4 = sin(T[4]); cosT4 = cos(T[4]);
-   sinT5 = sin(T[5]); cosT5 = cos(T[5]);
+   double sinT3 = sin(T[3]); double cosT3 = cos(T[3]);
+   double sinT4 = sin(T[4]); double cosT4 = cos(T[4]);
+   double sinT5 = sin(T[5]); double cosT5 = cos(T[5]);
 
    out_8569497029995662505[0] = 500*P_L[3]/(sinT3*cosT4*P_L[1] - sinT4*P_L[0] + cosT3*cosT4*P_L[2] + P_L[3]*T[2]);
    out_8569497029995662505[1] = 0;
