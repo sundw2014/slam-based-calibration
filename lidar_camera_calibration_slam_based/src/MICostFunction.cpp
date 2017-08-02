@@ -116,14 +116,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
     }
     delete[] X;//FIXME can speedup with Map
     delete[] Y;
-    Probability<1> p_x(sampleBuffer.row(0));
-    Probability<1> p_y(sampleBuffer.row(1));
-    Probability<2> p_xy(sampleBuffer);
-    Matrix<double, 4, 1> integral_bound;
-    integral_bound << sampleBuffer.row(0).minCoeff(),
-    sampleBuffer.row(0).maxCoeff(),
-    sampleBuffer.row(1).minCoeff(),
-    sampleBuffer.row(1).maxCoeff();
+    Probability probability(sampleBuffer);
 
     // 3.2 create P_L_Matched, a subset of raw point cloud matched with image points, and corresponding P_C_Matched
     MatrixXd P_L_Matched(4, P_L_Matched_idx_Pt - P_L_Matched_idx);
@@ -135,7 +128,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
     MatrixXd P_C_Matched = cameraK * T_cam_velo.topRows(3) * P_L_Matched;
 
     // 4. calculate the residuals (inverse of MutualInformation)
-    residuals[0] = 1.0 / mi(sampleBuffer.row(0).data(), sampleBuffer.row(1).data(), sampleBuffer.cols());
+    residuals[0] = 1.0 / probability.mi();
 
     if (!jacobians) return true;
     double* jacobian = jacobians[0];
@@ -158,7 +151,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
       // beta_x
       Matrix<double, 2, 1> X;
       X << sampleBuffer(0, i), sampleBuffer(1, i);
-      Matrix<double, 2, 1> beta_x = getBeta_x(p_x, p_y, p_xy, X);
+      Matrix<double, 2, 1> beta_x = probability.getBeta_x(X);
 
       // Jacobian_X_xi
       Matrix<double, 6, 2> Jacobian_X_xi;
@@ -178,38 +171,6 @@ bool MICostFunction::Evaluate(double const* const* parameters,
       jacobian[i] = J(i, 0);
     }
     return true;
-  }
-  double MICostFunction::mi(const Probability<1> &p_x, const Probability<1> &p_y, const Probability<2> &p_xy, const Matrix<double, 4, 1> &bound)  const{
-    //TODO
-    return 0.0;
-  }
-  double MICostFunction::mi(const double *X, const double *Y, const int vector_length) const{
-    return discAndCalcMutualInformation(const_cast<double *>(X), const_cast<double *>(Y), vector_length);
-  }
-  Matrix<double, 2, 1> MICostFunction::getBeta_x(const Probability<1> &p_x, const Probability<1> &p_y, const Probability<2> &p_xy, const Matrix<double, 2, 1> X)  const{
-    Matrix<double, 2, 1> SFD, MSF, JSF;
-    #define DERIVATE_STEP 1e-3
-
-    double p1_1 = p_x.p(X.topRows(1));
-    double p1_2 = p_y.p(X.bottomRows(1));
-    MatrixXd shift;
-    shift.resize(1,1);
-    shift << X(0, 0) + DERIVATE_STEP; double derivate1_1 = (p_x.p(shift) - p1_1) / DERIVATE_STEP;
-    shift << X(1, 0) + DERIVATE_STEP; double derivate1_2 = (p_y.p(shift) - p1_2) / DERIVATE_STEP;
-
-    double p2 = p_xy.p(X);
-    shift.resize(2,1);
-    shift << X(0, 0) + DERIVATE_STEP, X(1, 0); double derivate2_1 = (p_xy.p(shift) - p2) / DERIVATE_STEP;
-    shift << X(0, 0), X(1, 0) + DERIVATE_STEP; double derivate2_2 = (p_xy.p(shift) - p2) / DERIVATE_STEP ;
-
-    MSF(0, 0) = -1.0 * derivate1_1 / p1_1;
-    MSF(1, 0) = -1.0 * derivate1_2 / p1_2;
-
-    JSF(0, 0) = -1.0 * derivate2_1 / p2;
-    JSF(1, 0) = -1.0 * derivate2_2 / p2;
-
-    SFD = MSF - JSF;
-    return SFD;
   }
 
   MatrixXd MICostFunction::getJacobian_uvz_xi(const MatrixXd &P_L, const double *xi_cam_velo)  const
