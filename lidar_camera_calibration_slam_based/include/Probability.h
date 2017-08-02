@@ -9,54 +9,88 @@
 #include <Eigen/Dense>
 // #include <iostream>
 
-template<std::size_t D>
 class Probability
 {
 public:
     // all samples are double, std::size_t is length of sample buffer
-  using SampleBuffer = Eigen::Matrix<double, D, -1>;
-  using QueryPoint = Eigen::Matrix<double, D, 1>;
+  using SampleBuffer = Eigen::Matrix<double, 2, -1>;
+  using QueryPoint = Eigen::Matrix<double, 2, 1>;
 public:
   Probability(const SampleBuffer &sampleBuffer);
-  double p(const QueryPoint &query, const Eigen::Matrix<double, D, D> *Sigma=nullptr) const;
+  double p(const QueryPoint &query) const;
+  double getBeta_x(const QueryPoint &query) const;
+  double mi() const;
+
 private:
   SampleBuffer _sampleBuffer;
-  double sigma[D];
+  double _mi = -1;
+  double _minVal[2] = {0.0};
+  JointProbabilityState state;
 };
 
-template<std::size_t D>
-Probability<D>::Probability(const SampleBuffer &sampleBuffer)
+Probability::Probability(const SampleBuffer &sampleBuffer)
 {
-  _sampleBuffer = sampleBuffer;
-  Eigen::MatrixXd centered = _sampleBuffer.colwise() - _sampleBuffer.rowwise().mean();
+  int vectorLength = sampleBuffer.cols();
+  uint *firstNormalisedVector = new(uint)(vectorLength);
+  uint *secondNormalisedVector = new(uint)(vectorLength);
 
-  for(int i=0;i<D;i++){
-    sigma[i] = sqrt((centered.row(i).cwiseProduct(centered.row(i)).sum()) / double(_sampleBuffer.row(i).cols() - 1)) / 10;
+  _minVal[0] = normaliseArray(sampleBuffer.row(0).data(), firstNormalisedVector,vectorLength);
+  _minVal[1] = normaliseArray(sampleBuffer.row(1).data(), secondNormalisedVector,vectorLength);
+
+  state = calculateJointProbability(firstNormalisedVector,secondNormalisedVector,vectorLength);
+
+  delete[] firstNormalisedVector;
+  delete[] secondNormalisedVector;
+}
+double Probability::p(const QueryPoint &query) const
+{
+  //TODO
+  return 0;
+}
+double Probability::getBeta_x(const QueryPoint &query) const
+{
+
+}
+double Probability::mi() const
+{
+  if(_mi < 0)
+  {
+    _mi = ;
   }
+  return _mi;
 }
 
-template<std::size_t D>
-double Probability<D>::p(const QueryPoint &query, const Eigen::Matrix<double, D, D> *Sigma) const
-{
-  if(Sigma == nullptr){
-    Sigma = new Eigen::Matrix<double, D, D>();
-    *const_cast<Eigen::Matrix<double, D, D> *>(Sigma) = Eigen::Matrix<double, D, D>::Identity();
-    for(int i=0;i<D;i++){
-      (*const_cast<Eigen::Matrix<double, D, D> *>(Sigma))(i,i) = sigma[i];
+void Probability::normaliseArray(const double *inputVector, uint *outputVector, int vectorLength) {
+    int minVal = 0;
+    int maxVal = 0;
+    int currentValue;
+    int i;
+
+    if (vectorLength > 0) {
+        int* tempVector = new int(vectorLength);
+        minVal = (int) floor(inputVector[0]);
+        maxVal = (int) floor(inputVector[0]);
+
+        for (i = 0; i < vectorLength; i++) {
+            currentValue = (int) floor(inputVector[i]);
+            tempVector[i] = currentValue;
+
+            if (currentValue < minVal) {
+                minVal = currentValue;
+            } else if (currentValue > maxVal) {
+                maxVal = currentValue;
+            }
+        }/*for loop over vector*/
+
+        for (i = 0; i < vectorLength; i++) {
+            outputVector[i] = tempVector[i] - minVal;
+        }
+
+        maxVal = (maxVal - minVal) + 1;
+        delete[] tempVector;
     }
-  }
-  Eigen::MatrixXd X_shifted_transposed = (_sampleBuffer.colwise() - query).transpose();
-  // std::cout<<X_shifted_transposed.row(1)<<std::endl;
-  // std::cout<<1.0 / sqrt((2 * M_PI * (*Sigma)).determinant())<<std::endl;
-  // std::cout<<(X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).row(1)<<std::endl;
-  // std::cout<<(X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).rowwise().sum().row(1)<<std::endl;
-  Eigen::MatrixXd k = 1.0 / sqrt((2 * M_PI * (*Sigma)).determinant()) * \
-    (-0.5 * (X_shifted_transposed * (*Sigma).inverse()).cwiseProduct(X_shifted_transposed).rowwise().sum().transpose())\
-    .array().exp().matrix(); // shape = 1*N
-  double result = 0.0;
-  result = k.mean();
-  delete Sigma;
-  return result;
+
+    return minVal;
 }
 
 #endif
