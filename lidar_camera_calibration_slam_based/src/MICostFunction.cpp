@@ -5,6 +5,9 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/eigen.hpp>
 
 using namespace Eigen;
 
@@ -26,8 +29,14 @@ MICostFunction::MICostFunction(const PointCloud pc, const DepthImage depth, cons
 
   _depth = new MatrixXd();
   (*_depth) = (*depth);
+
   // filtering
-  // TODO
+  cv::Mat image_depth;
+  cv::eigen2cv(*_depth, image_depth);
+  cv::Mat image_depth_smoothed = image_depth.clone();
+  cv::GaussianBlur(image_depth, image_depth_smoothed, cv::Size(13, 13), 0, 0 );
+  cv::cv2eigen(image_depth_smoothed, *_depth);
+
   for(int i=0;i<_depth->rows();i++){
     for(int j=0;j<_depth->cols();j++){
       if((*_depth)(i,j) < 0){(*_depth)(i,j) = 0;}
@@ -107,7 +116,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
 
     // 3. create some temp vars
     // 3.1 create pdf objects
-    Probability<2>::SampleBuffer sampleBuffer;
+    Probability::SampleBuffer sampleBuffer;
     sampleBuffer.resize(2, (Xpt-X));
     for(int i=0;i<(Xpt-X);i++){
       sampleBuffer(0,i) = X[i];
@@ -151,6 +160,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
       Matrix<double, 2, 1> X;
       X << sampleBuffer(0, i), sampleBuffer(1, i);
       Matrix<double, 2, 1> beta_x = probability.getBeta_x(X);
+      // std::cout<< beta_x.transpose() << std::endl;
 
       // Jacobian_X_xi
       Matrix<double, 6, 2> Jacobian_X_xi;

@@ -22,16 +22,23 @@ Probability::~Probability()
   freeJointProbabilityState(state);
 }
 
-MatrixXd Probability::calculateCondProbability(const JointProbabilityState &js, bool reverse)
+MatrixXd Probability::calculateCondProbability(const JointProbabilityState &js, bool reverse) const
 {
   if(js.numJointStates != L*L || js.numFirstStates != L || js.numSecondStates != L){
     std::cout<<"ERROR L*L"<<std::endl;
   }
-  Map<MatrixXd> jointState(js.jointStateProbs, L, L);
+
+  MatrixXd jointState = Map<MatrixXd>(js.jointProbabilityVector, L, L);
+
   if(reverse){
-    jointState = jointState.transpose();
+    jointState.transposeInPlace();
   }
-  MatrixXd condState(L, L) = jointState.colwise() / jointState.colwise().sum();
+  MatrixXd condState(L, L);
+  for(int i=0;i<L;i++)
+  {
+    condState.col(i) = jointState.col(i) / std::max(1e-5, jointState.col(i).sum());
+  }
+  return condState;
 }
 
 double Probability::p(const QueryPoint &query) const
@@ -48,24 +55,30 @@ Matrix<double, 2, 1> Probability::getBeta_x(const QueryPoint &query) const
 
   double beta1, beta2;
   if(n1 == 0){
-    beta1 = (state_21(n2, n1+1) - state_21(n2, n1)) / state_21(n2, n1)
+    beta1 = (state_21(n2, n1+1) - state_21(n2, n1)) / std::max(1e-3, state_21(n2, n1));
   }
   else{
-    beta1 = (state_21(n2, n1) - state_21(n2, n1-1)) / state_21(n2, n1)
+    beta1 = (state_21(n2, n1) - state_21(n2, n1-1)) / std::max(1e-3, state_21(n2, n1));
   }
   if(n2 == 0){
-    beta2 = (state_12(n1, n2+1) - state_12(n1, n2)) / state_12(n1, n2)
+    beta2 = (state_12(n1, n2+1) - state_12(n1, n2)) / std::max(1e-3, state_12(n1, n2));
   }
   else{
-    beta2 = (state_12(n1, n2) - state_12(n1, n2-1)) / state_12(n1, n2)
+    beta2 = (state_12(n1, n2) - state_12(n1, n2-1)) / std::max(1e-3, state_12(n1, n2));
   }
+  // if(isnan(beta1)){
+  //   std::cout << state_21(n2, n1+1) << " " << state_21(n2, n1) << " " << state_21(n2, n1-1) << std::endl;
+  // }
+  // if(isnan(beta2)){
+  //   std::cout << state_12(n1, n2+1) << " " << state_12(n1, n2) << " " << state_12(n1, n2-1) << std::endl;
+  // }
   result << beta1, beta2;
   return result;
 }
 
-int Probability::shiftPoint(double X, int i)
+int Probability::shiftPoint(double X, int i) const
 {
-  int result = int((inputVector[i] - _minVals[i]) / (_maxVals[i] - _minVals[i]) * (L-1));
+  int result = int((X - _minVals[i]) / (_maxVals[i] - _minVals[i]) * (L-1));
   if(result > (L - 1)){
     result = L - 1;
   }
@@ -76,7 +89,7 @@ int Probability::shiftPoint(double X, int i)
   return result;
 }
 
-double Probability::mi() const
+double Probability::mi()
 {
   if(_mi < 0)
   {
@@ -85,7 +98,7 @@ double Probability::mi() const
   return _mi;
 }
 
-void Probability::normaliseArray(const double *inputVector, uint *outputVector, int vectorLength, double *minVal_, double *maxVal_) {
+void Probability::normaliseArray(const double *inputVector, uint *outputVector, int vectorLength, double *minVal_, double *maxVal_) const {
     double minVal = 0;
     double maxVal = 0;
     double currentValue;

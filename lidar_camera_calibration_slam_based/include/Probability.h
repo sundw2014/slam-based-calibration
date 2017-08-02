@@ -7,9 +7,10 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
+#define COMPILE_C
 #include "MIToolbox/MutualInformation.h"
 
-// #include <iostream>
+#include <iostream>
 using namespace Eigen;
 
 #define L 50
@@ -22,11 +23,13 @@ public:
   using QueryPoint = Eigen::Matrix<double, 2, 1>;
 public:
   Probability(const SampleBuffer &sampleBuffer);
+  ~Probability();
   double p(const QueryPoint &query) const;
   Matrix<double, 2, 1> getBeta_x(const QueryPoint &query) const;
-  double mi() const;
+  double mi();
   void normaliseArray(const double *inputVector, uint *outputVector, int vectorLength, double *minVal_, double *maxVal_) const;;
   int shiftPoint(double X, int i) const;
+  MatrixXd calculateCondProbability(const JointProbabilityState &js, bool reverse) const;
 
 private:
   SampleBuffer _sampleBuffer;
