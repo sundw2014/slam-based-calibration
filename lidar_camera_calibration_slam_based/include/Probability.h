@@ -8,6 +8,9 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 // #include <iostream>
+using namespace Eigen;
+
+#define L 50
 
 class Probability
 {
@@ -18,62 +21,113 @@ public:
 public:
   Probability(const SampleBuffer &sampleBuffer);
   double p(const QueryPoint &query) const;
-  double getBeta_x(const QueryPoint &query) const;
+  Matrix<double, 2, 1> getBeta_x(const QueryPoint &query) const;
   double mi() const;
+  void normaliseArray(const double *inputVector, uint *outputVector, int vectorLength, double *minVal_, double *maxVal_) const;;
+  int shiftPoint(double X, int i) const;
 
 private:
   SampleBuffer _sampleBuffer;
   double _mi = -1;
-  double _minVal[2] = {0.0};
+  double _minVals[2] = {0.0};
+  double _maxVals[2] = {0.0};
   JointProbabilityState state;
+  MatrixXd state_12;
+  MatrixXd state_21;
 };
 
 Probability::Probability(const SampleBuffer &sampleBuffer)
 {
   int vectorLength = sampleBuffer.cols();
-  uint *firstNormalisedVector = new(uint)(vectorLength);
-  uint *secondNormalisedVector = new(uint)(vectorLength);
+  uint *firstNormalisedVector = new uint[vectorLength];
+  uint *secondNormalisedVector = new uint[vectorLength];
 
-  _minVal[0] = normaliseArray(sampleBuffer.row(0).data(), firstNormalisedVector,vectorLength);
-  _minVal[1] = normaliseArray(sampleBuffer.row(1).data(), secondNormalisedVector,vectorLength);
+  normaliseArray(sampleBuffer.row(0).data(), firstNormalisedVector, vectorLength, _minVals, _maxVals);
+  normaliseArray(sampleBuffer.row(1).data(), secondNormalisedVector, vectorLength, _minVals + 1, _maxVals + 1);
 
   state = calculateJointProbability(firstNormalisedVector,secondNormalisedVector,vectorLength);
+  state_12 = calculateCondProbability(state, false);
+  state_21 = calculateCondProbability(state, true);
 
   delete[] firstNormalisedVector;
   delete[] secondNormalisedVector;
 }
+
+MatrixXd Probability::calculateCondProbability(const JointProbabilityState &js, bool reverse)
+{
+  if(js.numJointStates != L*L || js.numFirstStates != L || js.numSecondStates != L){
+    std::cout<<"ERROR L*L"<<std::endl;
+  }
+  Map<MatrixXd> jointState(js.jointStateProbs, L, L);
+  if(reverse){
+    jointState = jointState.transpose();
+  }
+  MatrixXd condState(L, L) = jointState.colwise() / jointState.colwise().sum();
+}
+
 double Probability::p(const QueryPoint &query) const
 {
   //TODO
   return 0;
 }
-double Probability::getBeta_x(const QueryPoint &query) const
-{
 
+Matrix<double, 2, 1> Probability::getBeta_x(const QueryPoint &query) const
+{
+  int n1 = shiftPoint(query(0,0), 0);
+  int n2 = shiftPoint(query(1,0), 1);
+  Matrix<double, 2, 1> result;
+
+  double beta1, beta2;
+  if(n1 == 0){
+    beta1 = (state_21(n2, n1+1) - state_21(n2, n1)) / state_21(n2, n1)
+  }
+  else{
+    beta1 = (state_21(n2, n1) - state_21(n2, n1-1)) / state_21(n2, n1)
+  }
+  if(n2 == 0){
+    beta2 = (state_12(n1, n2+1) - state_12(n1, n2)) / state_12(n1, n2)
+  }
+  else{
+    beta2 = (state_12(n1, n2) - state_12(n1, n2-1)) / state_12(n1, n2)
+  }
+  result << beta1, beta2;
+  return result;
 }
+
+int Probability::shiftPoint(double X, int i)
+{
+  int result = int((inputVector[i] - _minVals[i]) / (_maxVals[i] - _minVals[i]) * (L-1));
+  if(result > (L - 1)){
+    result = L - 1;
+  }
+  if(result < 0)
+  {
+    result = 0;
+  }
+  return result;
+}
+
 double Probability::mi() const
 {
   if(_mi < 0)
   {
-    _mi = ;
+    _mi = ::mi(state);
   }
   return _mi;
 }
 
-void Probability::normaliseArray(const double *inputVector, uint *outputVector, int vectorLength) {
-    int minVal = 0;
-    int maxVal = 0;
-    int currentValue;
+void Probability::normaliseArray(const double *inputVector, uint *outputVector, int vectorLength, double *minVal_, double *maxVal_) {
+    double minVal = 0;
+    double maxVal = 0;
+    double currentValue;
     int i;
 
     if (vectorLength > 0) {
-        int* tempVector = new int(vectorLength);
-        minVal = (int) floor(inputVector[0]);
-        maxVal = (int) floor(inputVector[0]);
+        minVal = inputVector[0];
+        maxVal = inputVector[0];
 
         for (i = 0; i < vectorLength; i++) {
-            currentValue = (int) floor(inputVector[i]);
-            tempVector[i] = currentValue;
+            currentValue = inputVector[i];
 
             if (currentValue < minVal) {
                 minVal = currentValue;
@@ -81,16 +135,12 @@ void Probability::normaliseArray(const double *inputVector, uint *outputVector, 
                 maxVal = currentValue;
             }
         }/*for loop over vector*/
-
         for (i = 0; i < vectorLength; i++) {
-            outputVector[i] = tempVector[i] - minVal;
+            outputVector[i] = int((inputVector[i] - minVal) / (maxVal - minVal) * (L-1));
         }
-
-        maxVal = (maxVal - minVal) + 1;
-        delete[] tempVector;
     }
-
-    return minVal;
+    *minVal_ = minVal;
+    *maxVal_ = maxVal;
 }
 
 #endif
