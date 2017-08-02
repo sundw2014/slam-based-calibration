@@ -23,9 +23,6 @@ public:
     double* residuals,
     double** jacobians) const;
 
-  double mi(const Probability<1> &p_x, const Probability<1> &p_y, const Probability<2> &p_xy, const Matrix<double, 4, 1> &bound) const;
-  double mi(const double *X, const double *Y, const int vector_length)  const;
-  Matrix<double, 2, 1> getBeta_x(const Probability<1> &p_x, const Probability<1> &p_y, const Probability<2> &p_xy, const Matrix<double, 2, 1> X)  const;
   MatrixXd getJacobian_uvz_xi(const MatrixXd &P_L, const double *xi_cam_velo)  const;
 private:
   PointCloud _pc;
