@@ -210,41 +210,37 @@ int main(int argc, char **argv)
 		// cv::waitKey(0);
 		// problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
 	}
-	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-	double *_param[1] = {param};
-	double costs[100] = {0.0};
-	double derivates[100] = {0.0};
-	double residuals[1], total_cost = 0.0, total_derivate = 0.0;
-	double jacobian[6];
-	double *jacobians[1] = {jacobian};
+	for(int p=0;p<6;p++){
+		double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+		double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+		double range[6] = {1.0, 1.0, 1.0, 0.5, 0.5, 0.5};
+		double *_param[1] = {param};
+		double costs[200] = {0.0};
+		double derivates[200] = {0.0};
+		double residuals[1], total_cost = 0.0, total_derivate = 0.0;
+		double jacobian[6];
+		double *jacobians[1] = {jacobian};
 
-	for(int i=0;i<100;i++){
-		std::cout<<i<<std::endl;
-		param[5] = -1.9 + i/100.0*0.1;
-		total_cost = 0.0;
-		for(int j=0;j<costV.size();j++){
-			costV[j]->Evaluate(_param, residuals, nullptr);
-			total_cost += residuals[0];
+		for(int i=0;i<200;i++){
+			param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
+			total_cost = 0.0;
+			total_derivate = 0.0;
+			for(int j=0;j<costV.size();j++){
+				costV[j]->Evaluate(_param, residuals, jacobians);
+				total_cost += residuals[0];
+				total_derivate += jacobian[p];
+			}
+			costs[i] = total_cost;
+			derivates[i] = total_derivate;
+			// std::cout << p << " " << i << std::endl;
+			// std::cout<<derivates[i]<<std::endl;
 		}
-		costs[i] = total_cost;
-	}
-	for ( auto a:costs ) std::cout<<a<<" "; std::cout<<std::endl;
+		param[p] = param_raw[p];
 
-	for(int i=0;i<100;i++){
-		param[5] = -1.9 + i/100.0*0.1;
-		total_cost = 0.0;
-		total_derivate = 0.0;
-		for(int j=0;j<costV.size();j++){
-			costV[j]->Evaluate(_param, residuals, jacobians);
-			total_cost += residuals[0];
-			total_derivate += jacobian[5];
-		}
-		costs[i] = total_cost;
-		derivates[i] = total_derivate;
-		std::cout<<derivates[i]<<std::endl;
+		std::cout<<"%parameters [" << p << "]:" <<std::endl;
+		std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+		std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
 	}
-	for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<std::endl;
-
 	return 0;
 	problem.SetParameterLowerBound(result, 0, -0.64);
 	problem.SetParameterUpperBound(result, 0, -0.62);

@@ -91,7 +91,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
     // 2.2 find all of the corresponding points
     int num_point = imagePoints.cols();
     double *X = new double[num_point], *Y = new double[num_point], *Xpt = X, *Ypt = Y;
-    int *P_L_Matched_idx = new int[num_point], *P_L_Matched_idx_Pt = P_L_Matched_idx;
+    // int *P_L_Matched_idx = new int[num_point], *P_L_Matched_idx_Pt = P_L_Matched_idx;
 
     for(int i=0;i<num_point;i++)
     {
@@ -109,34 +109,36 @@ bool MICostFunction::Evaluate(double const* const* parameters,
         *Xpt = z; *Ypt = image_depth;
         Xpt++; Ypt++;
 
-        *P_L_Matched_idx_Pt = i;
-        P_L_Matched_idx_Pt++;
+        // *P_L_Matched_idx_Pt = i;
+        // P_L_Matched_idx_Pt++;
       }
     }
 
     // 3. create some temp vars
     // 3.1 create pdf objects
-    Probability::SampleBuffer sampleBuffer;
-    sampleBuffer.resize(2, (Xpt-X));
-    for(int i=0;i<(Xpt-X);i++){
-      sampleBuffer(0,i) = X[i];
-      sampleBuffer(1,i) = Y[i];
-    }
-    delete[] X;//FIXME can speedup with Map
-    delete[] Y;
-    Probability probability(sampleBuffer);
+    // Probability::SampleBuffer sampleBuffer;
+    // sampleBuffer.resize(2, (Xpt-X));
+    // for(int i=0;i<(Xpt-X);i++){
+    //   sampleBuffer(0,i) = X[i];
+    //   sampleBuffer(1,i) = Y[i];
+    // }
+    // delete[] X;//FIXME can speedup with Map
+    // delete[] Y;
+    // Probability probability(sampleBuffer);
 
     // 3.2 create P_L_Matched, a subset of raw point cloud matched with image points, and corresponding P_C_Matched
-    MatrixXd P_L_Matched(4, P_L_Matched_idx_Pt - P_L_Matched_idx);
-    for(int i=0; i<P_L_Matched.cols(); i++)
-    {
-      P_L_Matched.col(i) = _pc_homo->col(P_L_Matched_idx[i]);
-    }
-    delete[] P_L_Matched_idx;
-    MatrixXd P_C_Matched = cameraK * T_cam_velo.topRows(3) * P_L_Matched;
+    // MatrixXd P_L_Matched(4, P_L_Matched_idx_Pt - P_L_Matched_idx);
+    // for(int i=0; i<P_L_Matched.cols(); i++)
+    // {
+    //   P_L_Matched.col(i) = _pc_homo->col(P_L_Matched_idx[i]);
+    // }
+    // delete[] P_L_Matched_idx;
+    // MatrixXd P_C_Matched = cameraK * T_cam_velo.topRows(3) * P_L_Matched;
 
     // 4. calculate the residuals (inverse of MutualInformation)
-    residuals[0] = 1.0 / probability.mi();
+    residuals[0] = 1.0 / discAndCalcMutualInformation(X, Y, (Xpt-X)); // sampleBuffer.row(0), sampleBuffer.row(1), sampleBuffer.cols());
+    delete[] X;
+    delete[] Y;
 
     if (!jacobians) return true;
     double* jacobian = jacobians[0];
@@ -144,40 +146,49 @@ bool MICostFunction::Evaluate(double const* const* parameters,
 
     // 5. calculate the jacobian matrix
     // 5.1 sampleGradients 6xN (N = P_L_Matched.cols())
-    MatrixXd sampleGradients(6, P_L_Matched.cols());
-    for(int i=0; i<P_L_Matched.cols(); i++)
-    {
-      // "gradient" of this sample
-      Matrix<double, 6, 1> gradient;
-      // a sample point in PointCloud
-      Matrix<double, 4, 1> P_L = P_L_Matched.col(i);
-      Matrix<double, 3, 1> P_C = P_C_Matched.col(i);
-      P_C(0, 0) /= P_C(2, 0);
-      P_C(1, 0) /= P_C(2, 0);
-      double u = P_C(0,0), v = P_C(1,0);
-
-      // beta_x
-      Matrix<double, 2, 1> X;
-      X << sampleBuffer(0, i), sampleBuffer(1, i);
-      Matrix<double, 2, 1> beta_x = probability.getBeta_x(X);
-      // std::cout<< beta_x.transpose() << std::endl;
-
-      // Jacobian_X_xi
-      Matrix<double, 6, 2> Jacobian_X_xi;
-      Matrix<double, 6, 3> Jacobian_uvz_xi = getJacobian_uvz_xi(P_L, xi_cam_velo); // 6x3
-      Matrix<double, 2, 1> Jacobian_D_uv; Jacobian_D_uv << (*_depth_gradient_x)(int(v), int(u)), (*_depth_gradient_y)(int(v), int(u));
-      Jacobian_X_xi.col(0) = Jacobian_uvz_xi.leftCols(2) * Jacobian_D_uv;
-      Jacobian_X_xi.col(1) = Jacobian_uvz_xi.col(2);
-
-      // gradient
-      gradient = Jacobian_X_xi * beta_x;
-
-      sampleGradients.col(i) = gradient;
-    }
+    // MatrixXd sampleGradients(6, P_L_Matched.cols());
+    // for(int i=0; i<P_L_Matched.cols(); i++)
+    // {
+    //   // "gradient" of this sample
+    //   Matrix<double, 6, 1> gradient;
+    //   // a sample point in PointCloud
+    //   Matrix<double, 4, 1> P_L = P_L_Matched.col(i);
+    //   Matrix<double, 3, 1> P_C = P_C_Matched.col(i);
+    //   P_C(0, 0) /= P_C(2, 0);
+    //   P_C(1, 0) /= P_C(2, 0);
+    //   double u = P_C(0,0), v = P_C(1,0);
+    //
+    //   // beta_x
+    //   Matrix<double, 2, 1> X;
+    //   X << sampleBuffer(0, i), sampleBuffer(1, i);
+    //   Matrix<double, 2, 1> beta_x = probability.getBeta_x(X);
+    //   // std::cout<< beta_x.transpose() << std::endl;
+    //
+    //   // Jacobian_X_xi
+    //   Matrix<double, 6, 2> Jacobian_X_xi;
+    //   Matrix<double, 6, 3> Jacobian_uvz_xi = getJacobian_uvz_xi(P_L, xi_cam_velo); // 6x3
+    //   Matrix<double, 2, 1> Jacobian_D_uv; Jacobian_D_uv << (*_depth_gradient_x)(int(v), int(u)), (*_depth_gradient_y)(int(v), int(u));
+    //   Jacobian_X_xi.col(0) = Jacobian_uvz_xi.leftCols(2) * Jacobian_D_uv;
+    //   Jacobian_X_xi.col(1) = Jacobian_uvz_xi.col(2);
+    //
+    //   // gradient
+    //   gradient = Jacobian_X_xi * beta_x;
+    //
+    //   sampleGradients.col(i) = gradient;
+    // }
     // 5.2 J = E(sampleGradients)
-    Matrix<double, 6, 1> J = sampleGradients.rowwise().mean();
+    // Matrix<double, 6, 1> J = sampleGradients.rowwise().mean();
+    const double step[6] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01};
     for(int i=0; i<6; i++){
-      jacobian[i] = J(i, 0);
+      double residual = 0.0;
+      double _param[6] = {0.0};
+      for(int j=0;j<6;j++){
+        _param[j] = parameters[0][j];
+      }
+      _param[i] += step[i];
+      double *_params[1] = {_param};
+      Evaluate(_params, &residual, nullptr);
+      jacobian[i] = (residual - residuals[0]) / step[i];
     }
     return true;
   }
