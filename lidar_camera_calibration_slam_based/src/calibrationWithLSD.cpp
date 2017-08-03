@@ -186,7 +186,11 @@ int main(int argc, char **argv)
 
 	ceres::Problem problem;
 	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.6}; // test yaw
+	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.36405382877, -1.84993623057}; // test pitch
+	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.7704988456, -1.56405382877, -1.84993623057}; // test roll
+	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.5, -1.8}; // test roll and pitch
+	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	std::vector<MICostFunction *> costV;
 
 	for(auto kF : keyFrames){
@@ -198,8 +202,8 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		MICostFunction *pcc = new MICostFunction(velo_pointCloud, depth, color);
-		costV.push_back(pcc);
+		// MICostFunction *pcc = new MICostFunction(velo_pointCloud, depth, color);
+		// costV.push_back(pcc);
 		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
 		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
 		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
@@ -208,52 +212,45 @@ int main(int argc, char **argv)
 		// cv::eigen2cv(*color, image_color);
 		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
 		// cv::waitKey(0);
-		// problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
+		problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
 	}
-	for(int p=0;p<6;p++){
-		double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-		double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-		double range[6] = {1.0, 1.0, 1.0, 0.5, 0.5, 0.5};
-		double *_param[1] = {param};
-		double costs[200] = {0.0};
-		double derivates[200] = {0.0};
-		double residuals[1], total_cost = 0.0, total_derivate = 0.0;
-		double jacobian[6];
-		double *jacobians[1] = {jacobian};
-
-		for(int i=0;i<200;i++){
-			param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
-			total_cost = 0.0;
-			total_derivate = 0.0;
-			for(int j=0;j<costV.size();j++){
-				costV[j]->Evaluate(_param, residuals, jacobians);
-				total_cost += residuals[0];
-				total_derivate += jacobian[p];
-			}
-			costs[i] = total_cost;
-			derivates[i] = total_derivate;
-			// std::cout << p << " " << i << std::endl;
-			// std::cout<<derivates[i]<<std::endl;
-		}
-		param[p] = param_raw[p];
-
-		std::cout<<"%parameters [" << p << "]:" <<std::endl;
-		std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
-		std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+	// for(int p=0;p<6;p++){
+	// 	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	// 	double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	// 	double range[6] = {1.0, 1.0, 1.0, 0.5, 0.5, 0.5};
+	// 	double *_param[1] = {param};
+	// 	double costs[200] = {0.0};
+	// 	double derivates[200] = {0.0};
+	// 	double residuals[1], total_cost = 0.0, total_derivate = 0.0;
+	// 	double jacobian[6];
+	// 	double *jacobians[1] = {jacobian};
+	//
+	// 	for(int i=0;i<200;i++){
+	// 		param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
+	// 		total_cost = 0.0;
+	// 		total_derivate = 0.0;
+	// 		for(int j=0;j<costV.size();j++){
+	// 			costV[j]->Evaluate(_param, residuals, jacobians);
+	// 			total_cost += residuals[0];
+	// 			total_derivate += jacobian[p];
+	// 		}
+	// 		costs[i] = total_cost;
+	// 		derivates[i] = total_derivate;
+	// 		// std::cout << p << " " << i << std::endl;
+	// 		// std::cout<<derivates[i]<<std::endl;
+	// 	}
+	// 	param[p] = param_raw[p];
+	//
+	// 	std::cout<<"%parameters [" << p << "]:" <<std::endl;
+	// 	std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+	// 	std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+	// }
+	// return 0;
+	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.2, 0.2};
+	for(int i=0;i<6;i++){
+		problem.SetParameterLowerBound(result, i, T_cam_velo_xi[i] - boundWidth[i] / 2);
+		problem.SetParameterUpperBound(result, i, T_cam_velo_xi[i] + boundWidth[i] / 2);
 	}
-	return 0;
-	problem.SetParameterLowerBound(result, 0, -0.64);
-	problem.SetParameterUpperBound(result, 0, -0.62);
-	problem.SetParameterLowerBound(result, 1, 0.12);
-	problem.SetParameterUpperBound(result, 1, 0.14);
-	problem.SetParameterLowerBound(result, 2, 0.03);
-	problem.SetParameterUpperBound(result, 2, 0.04);
-	problem.SetParameterLowerBound(result, 3, 1.20);
-	problem.SetParameterUpperBound(result, 3, 1.21);
-	problem.SetParameterLowerBound(result, 4, -1.23);
-	problem.SetParameterUpperBound(result, 4, -1.21);
-	problem.SetParameterLowerBound(result, 5, 1.1);
-	problem.SetParameterUpperBound(result, 5, 1.4);
 
 	ceres::Solver::Options options;
 	// options.use_nonmonotonic_steps = true;
