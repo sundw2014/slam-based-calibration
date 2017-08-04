@@ -210,37 +210,46 @@ int main(int argc, char **argv)
 		// cv::waitKey(0);
 		// problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
 	}
-	for(int p=0;p<6;p++){
-		double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-		double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-		double range[6] = {1.0, 1.0, 1.0, 0.5, 0.5, 0.5};
-		double *_param[1] = {param};
-		double costs[200] = {0.0};
-		double derivates[200] = {0.0};
-		double residuals[1], total_cost = 0.0, total_derivate = 0.0;
-		double jacobian[6];
-		double *jacobians[1] = {jacobian};
+	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	double range[6] = {1.0, 1.0, 1.0, 0.5, 0.05, 0.1};
+	double *_param[1] = {param};
+	double costs[50][100] = {0.0};
+	double derivates[50][100] = {0.0};
+	double residuals[1], total_cost = 0.0, total_derivate = 0.0;
+	double jacobian[6];
+	double *jacobians[1] = {jacobian};
 
-		for(int i=0;i<200;i++){
-			param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
+	for(int i=0;i<50;i++){
+		for(int k=0;k<100;k++)
+		{
+			param[4] = param_raw[4] - range[4]/2 + i/50.0*range[4];
+			param[5] = param_raw[5] - range[5]/2 + k/100.0*range[5];
 			total_cost = 0.0;
-			total_derivate = 0.0;
+			// total_derivate = 0.0;
 			for(int j=0;j<costV.size();j++){
-				costV[j]->Evaluate(_param, residuals, jacobians);
+				costV[j]->Evaluate(_param, residuals, nullptr);
 				total_cost += residuals[0];
-				total_derivate += jacobian[p];
+				// total_derivate += jacobian[p];
 			}
-			costs[i] = total_cost;
-			derivates[i] = total_derivate;
-			// std::cout << p << " " << i << std::endl;
-			// std::cout<<derivates[i]<<std::endl;
+			costs[i][k] = total_cost;
 		}
-		param[p] = param_raw[p];
-
-		std::cout<<"%parameters [" << p << "]:" <<std::endl;
-		std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
-		std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+		// derivates[i] = total_derivate;
+		// std::cout << p << " " << i << std::endl;
+		// std::cout<<derivates[i]<<std::endl;
 	}
+
+	std::cout<<"%parameters [" << 4 << "," << 5 << "]:" <<std::endl;
+	std::cout<<"C45"<<" = ["<<std::endl;
+	for(int i=0;i<50;i++){
+		for(int k=0;k<100;k++)
+		{
+			std::cout<<costs[i][k]<<" ";
+		}
+		std::cout<<";"<<std::endl;
+	}
+	std::cout<<"];"<<std::endl;
+	// std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
 	return 0;
 	problem.SetParameterLowerBound(result, 0, -0.64);
 	problem.SetParameterUpperBound(result, 0, -0.62);
