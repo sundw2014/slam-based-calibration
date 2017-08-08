@@ -13,11 +13,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
-using namespace Eigen;
-
-using Image = MatrixXd;
-using PointCloud = Matrix<double, 4, -1>;
-using ProjectedPointCloud = Matrix<double, 4, -1>;
+#include "PhotoMetricErrorBlock.h"
 
 struct KeyFrame
 {
@@ -31,7 +27,7 @@ std::vector<KeyFrame> keyFrames;
 
 #define PI 3.14159265
 
-uint32_t image_w = 0, image_h = 0;
+// uint32_t image_w = 0, image_h = 0;
 int frame_count = 0;
 #define NUM_FRAMES_COUNT_LIMIT 30
 
@@ -40,7 +36,7 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 	cv_bridge::CvImagePtr cv_ptr;
 	try
 	{
-		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8); //FIXME
 	}
 	catch (cv_bridge::Exception& e)
 	{
@@ -50,14 +46,14 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 	ROS_INFO("new image");
 
 	Image *im = new Image();
-	cv::cv2eigen(cv_ptr.image, *im);
-	*im /= 255;
+	cv::cv2eigen(cv_ptr->image, *im);
+	*im /= 255.0;
 
 	frame_count++;
-  image_w = msg.width; image_h = msg.height;
+  // image_w = msg->width; image_h = msg->height;
 
   KeyFrame k;
-  k.time = msg.header.stamp.nsec / 1e6; k.im = im;
+  k.time = msg->header.stamp.nsec / 1e6; k.im = im;
   keyFrames.push_back(k);
 }
 
@@ -196,12 +192,12 @@ int main(int argc, char **argv)
 
 		int frameId = findCorrespondingLidarScan(timestamp, timestamp_vec);
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
-		PointCloud *velo_pointCloud = new PointCloud();
+		MatrixXd *velo_pointCloud = new PointCloud();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
 		// project lidar point cloud to image
 
 		PointCloud *_pc_homo = new PointCloud(4, velo_pointCloud->cols());
-		(*_pc_homo) << velo_pointCloud->topRows(3), MatrixXd::Ones(1, _pc->cols());
+		(*_pc_homo) << velo_pointCloud->topRows(3), MatrixXd::Ones(1, velo_pointCloud->cols());
 
 		// 2. find all of the corresponding points
 		// 2.1 project this PointCloud to image plane
@@ -209,8 +205,8 @@ int main(int argc, char **argv)
 		// 2.2 find all of the corresponding points
 		int num_point = imagePoints.cols();
 		ProjectedPointCloud *ppl = new ProjectedPointCloud();
-		ppl->resize(ppl->rows(), num_point);
-		int matched_points_count = 0
+		ppl->resize(4, num_point);
+		int matched_points_count = 0;
 
 		for(int i=0;i<num_point;i++)
 		{
@@ -222,12 +218,23 @@ int main(int argc, char **argv)
 				continue;
 			}
 			ppl->col(matched_points_count) = T_cam_velo * _pc_homo->col(i);
-			(*ppl)(3, matched_points_count) = im(int(v), int(u));
+			(*ppl)(3, matched_points_count) = (*im)(int(v), int(u));
 			matched_points_count++;
 		}
 		(*ppl) = ppl->leftCols(matched_points_count);
 		kF.ppl = ppl;
 		kF.pl = velo_pointCloud;
+		delete _pc_homo;
+	}
+	// calculate relative pose between first two frames
+	ceres::Problem problem;
+	auto kF1 = keyFrames[0];
+	auto kF2 = keyFrames[1];
+  double result[6] = {0.0};
+	for(int i=0;i<kF1.ppl->cols();i++)
+	{
+		// add a bolck
+		auto photoMetricErrorBlock = new PhotoMetricErrorBlock(*kF1.ppl, *kF2.im);
 	}
 
 	ceres::Solver::Options options;

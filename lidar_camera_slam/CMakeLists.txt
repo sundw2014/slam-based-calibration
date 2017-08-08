@@ -139,7 +139,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(odometry src/odometry.cpp)
+add_executable(odometry src/odometry.cpp src/Jacobian_P_T.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -200,6 +200,7 @@ target_compile_features(odometry PRIVATE cxx_range_for)
 #############
 
 ## Add gtest based cpp test target and link libraries
+catkin_add_gtest(utest_Jacobian_P_T2 test/utest_Jacobian_P_T.cpp src/Jacobian_P_T.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
