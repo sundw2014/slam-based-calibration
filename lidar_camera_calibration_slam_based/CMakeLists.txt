@@ -140,6 +140,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.cpp src/Jacobian_P_T.cpp src/Probability.cpp)
+add_executable(collectLidarPointClouds src/collectLidarPointClouds.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -161,6 +162,9 @@ target_link_libraries(calibrationWithLSD
    ${CERES_LIBRARIES}
  )
 
+ target_link_libraries(collectLidarPointClouds
+    ${catkin_LIBRARIES}
+ )
 target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
 #############
 ## Install ##
