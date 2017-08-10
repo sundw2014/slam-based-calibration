@@ -29,14 +29,14 @@ std::vector<KeyFrame> keyFrames;
 
 // uint32_t image_w = 0, image_h = 0;
 int frame_count = 0;
-#define NUM_FRAMES_COUNT_LIMIT 30
+#define NUM_FRAMES_COUNT_LIMIT 5
 
 void image_callback(const sensor_msgs::ImageConstPtr& msg)
 {
 	cv_bridge::CvImagePtr cv_ptr;
 	try
 	{
-		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8); //FIXME
+		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_8UC1); //FIXME
 	}
 	catch (cv_bridge::Exception& e)
 	{
@@ -50,10 +50,11 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 	*im /= 255.0;
 
 	frame_count++;
+  // std::cout<<msg->width<<" "<<msg->height<<std::endl;
   // image_w = msg->width; image_h = msg->height;
 
   KeyFrame k;
-  k.time = msg->header.stamp.nsec / 1e6; k.im = im;
+  k.time = msg->header.stamp.sec + msg->header.stamp.nsec / 1e9; k.im = im;
   keyFrames.push_back(k);
 }
 
@@ -164,7 +165,7 @@ int main(int argc, char **argv)
 	// double loss1 = 0.0, loss2 = 0.0;
 
 	// xi_cam_velo should be in rad
-	double xi_cam_velo[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
+	double xi_cam_velo[6] = {-0.00478403, -0.07337429, -0.33399681, -2.87049895, -1.56405383, -1.84993623};
 
 	// 1. get transform matrix (4x4)
 	// 1.1 get rotation matrix form xi_cam_velo
@@ -191,7 +192,7 @@ int main(int argc, char **argv)
 		auto im = kF.im;
 
 		int frameId = findCorrespondingLidarScan(timestamp, timestamp_vec);
-		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
+		if(frameId<0){ROS_ERROR("time = %lf, can not find corresponding scan!!!", timestamp); exit(1);}
 		MatrixXd *velo_pointCloud = new PointCloud();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
 		// project lidar point cloud to image
@@ -221,8 +222,10 @@ int main(int argc, char **argv)
 			(*ppl)(3, matched_points_count) = (*im)(int(v), int(u));
 			matched_points_count++;
 		}
-		(*ppl) = ppl->leftCols(matched_points_count);
-		kF.ppl = ppl;
+    ProjectedPointCloud *_ppl = new ProjectedPointCloud();
+    (*_ppl) = ppl->leftCols(matched_points_count);
+    // _ppl->resize(4, num_point);
+		kF.ppl = _ppl;
 		kF.pl = velo_pointCloud;
 		delete _pc_homo;
 	}
@@ -231,12 +234,42 @@ int main(int argc, char **argv)
 	auto kF1 = keyFrames[0];
 	auto kF2 = keyFrames[1];
   double result[6] = {0.0};
-	for(int i=0;i<kF1.ppl->cols();i++)
-	{
-		// add a bolck
-		auto photoMetricErrorBlock = new PhotoMetricErrorBlock(*kF1.ppl, *kF2.im);
-	}
+  ROS_INFO("kF1.time = %lf, kF2.time = %lf\r\n", kF1.time, kF2.time);
+  ROS_INFO("kF1.ID = %d, kF2.ID = %d\r\n", \
+    findCorrespondingLidarScan(kF1.time, timestamp_vec), \
+    findCorrespondingLidarScan(kF2.time, timestamp_vec));
 
+  double param_raw[6] = {-2.07564977, 0.06183537, -0.11586609, 0.01602875, -0.00214503, -0.18479365};
+  double param[6] = {-2.07564977, 0.06183537, -0.11586609, 0.01602875, -0.00214503, -0.18479365};
+  double *_param[1] = {param};
+  double costs[500] = {0.0};
+  double derivates[500] = {0.0};
+  double residuals[1], total_cost = 0.0, total_derivate = 0.0;
+  double jacobian[6];
+  double *jacobians[1] = {jacobian};
+  double range[6] = {0,0,0,0,0,0.5};
+
+  PhotoMetricErrorBlock *ppb = new PhotoMetricErrorBlock(*kF1.ppl, *kF2.im);
+	// for(int i=0;i<500;i++){
+  //   param[5] = param_raw[5] - range[5]/2 + i/500.0*range[5];
+  //   total_cost = 0.0;
+  //   total_derivate = 0.0;
+  //   ppb->Evaluate(_param, residuals, jacobians);
+  //   total_cost += residuals[0];
+  //   total_derivate += jacobian[5];
+  //   costs[i] = total_cost;
+  //   derivates[i] = total_derivate;
+  //   // std::cout << p << " " << i << std::endl;
+  //   // std::cout<<derivates[i]<<std::endl;
+  // }
+
+  std::cout<<"%parameters [" << 5 << "]:" <<std::endl;
+  std::cout<<"C"<<5<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+  std::cout<<"D"<<5<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+
+	// // add a bolck
+  problem.AddResidualBlock(new PhotoMetricErrorBlock(*kF1.ppl, *kF2.im), nullptr, result);
+  // std::cout<<*kF2.im;
 	ceres::Solver::Options options;
 	// options.use_nonmonotonic_steps = true;
 	options.linear_solver_type = ceres::DENSE_QR;

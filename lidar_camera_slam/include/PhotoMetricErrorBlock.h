@@ -6,12 +6,13 @@
 #include <Eigen/Dense>
 #include <ceres/ceres.h>
 #include "Jacobian_P_T.h"
-#define image_w 640
-#define image_h 480
-#define fx 374.672943115
-#define fy 930.62701416
-#define cx 316.473266602
-#define cy 239.77923584
+
+#define image_w 1226
+#define image_h 370
+#define fx 718.856
+#define fy 718.856
+#define cx 607.1928
+#define cy 185.2157
 
 using Image = Eigen::MatrixXd;
 using PointCloud = Eigen::MatrixXd;
@@ -89,14 +90,17 @@ public:
 			}
       // in new image plane, calculate the photometric error
 			pl_residuals(0, matched_points_count) = _im(int(v), int(u)) - _pc_greyScale(0, i);
+      if(isnan(pl_residuals(0, matched_points_count)))
+      {
+        std::cout<<_im(int(v), int(u))<<" "<<_pc_greyScale(0, i);
+      }
 			matched_points_count++;
 
       *P_L_Matched_idx_Pt = i;
       P_L_Matched_idx_Pt++;
 		}
     // 3. calculate the residuals
-    pl_residuals = pl_residuals.leftCols(matched_points_count);
-    residuals[0] = 0.5 * pl_residuals.squaredNorm() / matched_points_count;
+    residuals[0] = 0.5 * pl_residuals.leftCols(matched_points_count).squaredNorm() / matched_points_count;
 
     if (!jacobians) return true;
     double* jacobian = jacobians[0];
@@ -120,10 +124,13 @@ public:
       Matrix<double, 2, 1> Jacobian_D_uv; Jacobian_D_uv << _image_gradient_x(int(v), int(u)), _image_gradient_y(int(v), int(u));
       Jacobian_I_xi = Jacobian_uv_xi * Jacobian_D_uv;
 
-      sampleGradients.col(i) = Jacobian_I_xi;
+      sampleGradients.col(i) = pl_residuals(0,i) * Jacobian_I_xi;
     }
     // 4.2. J = E(sampleGradients)
     Matrix<double, 6, 1> J = sampleGradients.rowwise().mean();
+    for(int i=0; i<6; i++){
+      jacobian[i] = J(i,0);
+    }
   }
 
   MatrixXd getJacobian_uv_xi(const MatrixXd &P_L, const double *xi_cam_velo)  const
