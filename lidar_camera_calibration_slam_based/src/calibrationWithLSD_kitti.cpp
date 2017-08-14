@@ -1,7 +1,6 @@
 #include "ros/ros.h"
 #include "lidar_camera_calibration_slam_based/keyframeMsg.h"
 #include <iostream>
-#include <stdlib.h>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
@@ -72,9 +71,9 @@ int findCorrespondingLidarScan(double timestamp, std::vector<double> &time_scans
 int findCorrespondingLidarScan(double timestamp, std::vector<double> &time_scans, int start)
 {
 	start = start>0 ? start : 0;
-	for(int i=start+1;i<time_scans.size();i++)
+	for(int i=start;i<time_scans.size()-1;i++)
 	{
-		if(timestamp < time_scans[i] && timestamp >= time_scans[i-1]){
+		if(timestamp > time_scans[i] && timestamp < time_scans[i+1]){
 			return i;
 		}
 	}
@@ -95,8 +94,20 @@ bool loadTimestampsIntoVector(
     std::stringstream line_stream(line);
 
     std::string timestamp_string = line_stream.str();
-	timestamp_string = timestamp_string.substr(0, timestamp_string.length()-1);
-    double timestamp = (double)std::atof(timestamp_string.c_str());
+    std::tm t = {};
+    t.tm_year = std::stoi(timestamp_string.substr(0, 4)) - 1900;
+    t.tm_mon  = std::stoi(timestamp_string.substr(5, 2)) - 1;
+    t.tm_mday = std::stoi(timestamp_string.substr(8, 2));
+    t.tm_hour = std::stoi(timestamp_string.substr(11, 2));
+    t.tm_min  = std::stoi(timestamp_string.substr(14, 2));
+    t.tm_sec  = std::stoi(timestamp_string.substr(17, 2));
+    t.tm_isdst = -1;
+
+    static const uint64_t kSecondsToNanoSeconds = 1e9;
+    time_t time_since_epoch = mktime(&t);
+
+    double timestamp = (double)time_since_epoch +
+                         (double)std::stoi(timestamp_string.substr(20, 9)) / kSecondsToNanoSeconds;
     timestamp_vec->push_back(timestamp);
   }
 
@@ -109,12 +120,10 @@ bool loadTimestampsIntoVector(
 
 bool loadVeloPointCloud(int frameId, MatrixXd &pc)
 {
-	// std::string filename =  (std::string("0000000000") + std::to_string(frameId));
+	std::string filename =  (std::string("0000000000") + std::to_string(frameId));
   std::string path = \
-	"/home/sundw/data/velodyne/"\
-	+ std::to_string(frameId)
-	+ ".bin";
-	//  + filename.substr(filename.size()-10) \
+	"/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/data/"\
+	 + filename.substr(filename.size()-10) \
 	 + ".bin";
 
 	std::ifstream input(path, std::ios::binary | std::ios::ate);
@@ -165,7 +174,7 @@ int main(int argc, char **argv)
 
   // start calibrating
 	std::vector<double> timestamp_vec;
-	loadTimestampsIntoVector("/home/sundw/data/velodyne_points/timestamps.txt", &timestamp_vec);
+	loadTimestampsIntoVector("/home/sundw/workspace/data/2011_09_30/2011_09_30_drive_0028_sync/velodyne_points/timestamps_start.txt", &timestamp_vec);
 	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
@@ -176,11 +185,11 @@ int main(int argc, char **argv)
 	// double loss1 = 0.0, loss2 = 0.0;
 
 	ceres::Problem problem;
-	double T_cam_velo_xi[6] = {0.0, -0.0583, -0.015, 1.57, 0.0, 0.0};
+	double T_cam_velo_xi[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.6}; // test yaw
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.36405382877, -1.84993623057}; // test pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.7704988456, -1.56405382877, -1.84993623057}; // test roll
-	double result[6] = {0.0, -0.0583, -0.015, 1.57, 0.0, 0.0}; // test roll and pitch
+	double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.5, -1.8}; // test roll and pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	std::vector<MICostFunction *> costV;
 
@@ -237,7 +246,7 @@ int main(int argc, char **argv)
 	// 	std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
 	// }
 	// return 0;
-	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.2, 0.02};
+	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.2, 0.2};
 	for(int i=0;i<6;i++){
 		problem.SetParameterLowerBound(result, i, T_cam_velo_xi[i] - boundWidth[i] / 2);
 		problem.SetParameterUpperBound(result, i, T_cam_velo_xi[i] + boundWidth[i] / 2);

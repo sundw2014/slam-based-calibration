@@ -113,6 +113,7 @@ catkin_package(
 ## Build ##
 ###########
 
+find_package(Eigen3 REQUIRED )
 find_package(Sophus REQUIRED )
 find_package(OpenCV REQUIRED)
 find_package(Ceres QUIET REQUIRED)
@@ -123,7 +124,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
-  "/home/sundw/workspace/eigen-eigen-5a0156e40feb"
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -140,6 +141,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(calibrationWithLSD src/calibrationWithLSD.cpp src/MICostFunction.cpp src/Jacobian_P_T.cpp src/Probability.cpp)
+add_executable(calibrationWithLSD_kitti src/calibrationWithLSD_kitti.cpp src/MICostFunction.cpp src/Jacobian_P_T.cpp src/Probability.cpp)
 add_executable(collectLidarPointClouds src/collectLidarPointClouds.cpp)
 
 ## Rename C++ executable without prefix
@@ -166,6 +168,22 @@ target_link_libraries(calibrationWithLSD
     ${catkin_LIBRARIES}
  )
 target_compile_features(calibrationWithLSD PRIVATE cxx_range_for)
+target_compile_features(calibrationWithLSD_kitti PRIVATE cxx_range_for)
+
+add_dependencies(calibrationWithLSD_kitti ${PROJECT_NAME}_generate_messages_cpp)
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(calibrationWithLSD_kitti
+   ${catkin_LIBRARIES}
+   ${Sophus_LIBRARIES}
+   ceres
+   ${OpenCV_LIBS}
+   MIToolbox
+   ${CERES_LIBRARIES}
+ )
+
+target_compile_features(calibrationWithLSD_kitti PRIVATE cxx_range_for)
+
 #############
 ## Install ##
 #############

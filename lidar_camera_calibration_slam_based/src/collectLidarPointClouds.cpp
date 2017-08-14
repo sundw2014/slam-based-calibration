@@ -34,9 +34,11 @@ void ScanCallback(const sensor_msgs::PointCloud2& msg)
   frameId++;
 }
 
+// argv[1] : basedir
+// argv[2] : topic name
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "calibrationWithLSD");
+  ros::init(argc, argv, "collectLidarData");
 
   ros::NodeHandle n;
 

@@ -116,6 +116,7 @@ catkin_package(
 ###########
 
 find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(Ceres QUIET REQUIRED)
 
 ## Specify additional locations of header files
@@ -123,7 +124,7 @@ find_package(Ceres QUIET REQUIRED)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  "/home/sundw/workspace/eigen-eigen-5a0156e40feb"
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
