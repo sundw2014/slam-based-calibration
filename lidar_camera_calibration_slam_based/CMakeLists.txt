@@ -113,7 +113,7 @@ catkin_package(
 ## Build ##
 ###########
 
-find_package(Eigen3 REQUIRED )
+#find_package(Eigen3 REQUIRED )
 find_package(Sophus REQUIRED )
 find_package(OpenCV REQUIRED)
 find_package(Ceres QUIET REQUIRED)
@@ -124,7 +124,8 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
+  #${EIGEN3_INCLUDE_DIR}
+  "/home/sundw/workspace/eigen-eigen-5a0156e40feb/"
 )
 
 ## Declare a C++ library

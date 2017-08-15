@@ -35,17 +35,18 @@ class image_converter:
     # cv2.waitKey(3)
 
 def pc_callback(data):
+    print('new pointcloud')
     global pc
     pc = np.frombuffer(data.data, dtype=np.float32, count=data.row_step/4)
 
-_T_cam_velo = np.array([0.0, -0.0583, -0.015, 1.57, -1.35, 0.0])
+_T_cam_velo = np.array([-0.00478403, -0.07337429, -0.33399681, -2.870498845517217, -1.5640538287333043, -1.849936230550016])
 # _T_cam_velo = np.array([-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057])
-fx = 1358.010977
-fy = 1357.44302436
-cx = 950.243
-cy = 644.85837
+fx = 707.0912
+fy = 707.0912
+cx = 601.8873
+cy = 183.1104
 camera_K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-image_w = 1920; image_h = 1200
+image_w = 1226; image_h = 370
 T_cam_velo = transformation.compose_matrix(angles = _T_cam_velo[3:6], translate = _T_cam_velo[0:3])
 
 def transform_show(velo, local_image):
@@ -63,7 +64,7 @@ def transform_show(velo, local_image):
         u = int(u/z); v = int(v/z);
         if u<0 or u>=image_w or v<0 or v>=image_h or z<0:
             continue
-        cv2.circle(local_image, (u,v), 3, 255)
+        cv2.circle(local_image, (u,v), 1, 255)
     cv2.imshow('fuse', local_image) #cv2.resize(local_image, (0, 0), fx = 0.5, fy = 0.5))
     cv2.waitKey(30)
 

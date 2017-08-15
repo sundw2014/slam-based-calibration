@@ -76,11 +76,18 @@ def getCameraModelDiff(K):
     Jacobian = P_C.jacobian(T)
     return Jacobian
 
+# for kitti camera3
+# fx = 374.672943115
+# fy = 930.62701416
+# cx = 316.473266602
+# cy = 239.77923584
 
-fx = 374.672943115
-fy = 930.62701416
-cx = 316.473266602
-cy = 239.77923584
+# for PointGrey blackfly
+fx = 417.671600342
+fy = 520.393188477
+cx = 316.993652344
+cy = 258.899169922
+
 K = sympy.Matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
 J = getCameraModelDiff(K)
 

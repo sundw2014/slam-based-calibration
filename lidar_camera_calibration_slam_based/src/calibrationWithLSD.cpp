@@ -71,13 +71,17 @@ int findCorrespondingLidarScan(double timestamp, std::vector<double> &time_scans
 
 int findCorrespondingLidarScan(double timestamp, std::vector<double> &time_scans, int start)
 {
+	ROS_INFO("timestamp = %lf, ", timestamp);
 	start = start>0 ? start : 0;
 	for(int i=start+1;i<time_scans.size();i++)
 	{
 		if(timestamp < time_scans[i] && timestamp >= time_scans[i-1]){
+			ROS_INFO("find timestamp = %lf\n", time_scans[i]);
 			return i;
 		}
 	}
+	ROS_INFO("can not find\n");
+
 	return -1;
 }
 
@@ -86,17 +90,19 @@ bool loadTimestampsIntoVector(
 
   std::ifstream import_file(filename, std::ios::in);
   if (!import_file) {
+		ROS_ERROR("open file failed");
     return false;
   }
-
+	ROS_INFO("open file successfully");
   timestamp_vec->clear();
   std::string line;
   while (std::getline(import_file, line)) {
     std::stringstream line_stream(line);
 
     std::string timestamp_string = line_stream.str();
-	timestamp_string = timestamp_string.substr(0, timestamp_string.length()-1);
+		timestamp_string = timestamp_string.substr(0, timestamp_string.length()-1);
     double timestamp = (double)std::atof(timestamp_string.c_str());
+		// ROS_INFO("time_scans[i] = %lf\n", timestamp);
     timestamp_vec->push_back(timestamp);
   }
 
@@ -111,7 +117,7 @@ bool loadVeloPointCloud(int frameId, MatrixXd &pc)
 {
 	// std::string filename =  (std::string("0000000000") + std::to_string(frameId));
   std::string path = \
-	"/home/sundw/data/velodyne/"\
+	"/home/sundw/workspace/data/2017_08_14/velodyne_points/"\
 	+ std::to_string(frameId)
 	+ ".bin";
 	//  + filename.substr(filename.size()-10) \
@@ -165,7 +171,7 @@ int main(int argc, char **argv)
 
   // start calibrating
 	std::vector<double> timestamp_vec;
-	loadTimestampsIntoVector("/home/sundw/data/velodyne_points/timestamps.txt", &timestamp_vec);
+	loadTimestampsIntoVector("/home/sundw/workspace/data/2017_08_14/velodyne_points/timestamp.txt", &timestamp_vec);
 	// cv::namedWindow( "image", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity1", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// cv::namedWindow( "velo_intensity2", cv::WINDOW_AUTOSIZE );// Create a window for display.
@@ -176,11 +182,11 @@ int main(int argc, char **argv)
 	// double loss1 = 0.0, loss2 = 0.0;
 
 	ceres::Problem problem;
-	double T_cam_velo_xi[6] = {0.0, -0.0583, -0.015, 1.57, 0.0, 0.0};
+	double T_cam_velo_xi[6] = {0.0, -0.0583, -0.015, 1.57, -1.35, 0.0};
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.6}; // test yaw
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.36405382877, -1.84993623057}; // test pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.7704988456, -1.56405382877, -1.84993623057}; // test roll
-	double result[6] = {0.0, -0.0583, -0.015, 1.57, 0.0, 0.0}; // test roll and pitch
+	double result[6] = {0.0, -0.0583, -0.015, 1.57, -1.4, 0.0}; // test roll and pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	std::vector<MICostFunction *> costV;
 

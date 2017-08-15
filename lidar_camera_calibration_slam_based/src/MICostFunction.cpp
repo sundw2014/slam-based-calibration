@@ -13,10 +13,16 @@ using namespace Eigen;
 
 #define image_w 640
 #define image_h 480
-#define fx 374.672943115
-#define fy 930.62701416
-#define cx 316.473266602
-#define cy 239.77923584
+// for kitti camera3
+// #define fx 374.672943115
+// #define fy 930.62701416
+// #define cx 316.473266602
+// #define cy 239.77923584
+// for PointGrey blackfly
+#define fx 417.671600342
+#define fy 520.393188477
+#define cx 316.993652344
+#define cy 258.899169922
 
 MICostFunction::MICostFunction(const PointCloud pc, const DepthImage depth, const DepthImage color):_pc(pc), _color(color){
 
