@@ -110,7 +110,7 @@ bool MICostFunction::Evaluate(double const* const* parameters,
       }
       // this point is in the image plane
       double image_depth = (*_depth)((int)(v), (int)(u));
-      if(image_depth > 0 && image_depth < 100.0){
+      if(image_depth >= 0 && image_depth < 100.0){
         // find a corresponding point, add depth to random varibles X and Y
         *Xpt = z; *Ypt = image_depth;
         Xpt++; Ypt++;

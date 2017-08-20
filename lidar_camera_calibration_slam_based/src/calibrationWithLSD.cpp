@@ -37,7 +37,9 @@ std::vector<KeyFrame> keyFrames;
 
 uint32_t image_w = 0, image_h = 0;
 int frame_count = 0;
-#define NUM_FRAMES_COUNT_LIMIT 30
+#define NUM_FRAMES_COUNT_LIMIT 50
+
+void GridSearch(const double *initial, const double *range, const int *num_steps, double *result, std::vector<MICostFunction *> &costV);
 
 void keyFrameCallback(const lidar_camera_calibration_slam_based::keyframeMsg& msg)
 {
@@ -167,7 +169,7 @@ int main(int argc, char **argv)
 
   while(ros::ok()){
     ros::spinOnce();
-		if(frame_count>NUM_FRAMES_COUNT_LIMIT) {break;}
+		if(frame_count>=NUM_FRAMES_COUNT_LIMIT) {break;}
   }
 
   // start calibrating
@@ -182,14 +184,15 @@ int main(int argc, char **argv)
 	// cv::namedWindow( "velo_pointCloud", cv::WINDOW_AUTOSIZE );// Create a window for display.
 	// double loss1 = 0.0, loss2 = 0.0;
 
-	ceres::Problem problem;
+	// ceres::Problem problem;
 	double T_cam_velo_xi[6] = {0.0, -0.0583, -0.015, 1.57, -1.35, 0.0};
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.6}; // test yaw
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.36405382877, -1.84993623057}; // test pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.7704988456, -1.56405382877, -1.84993623057}; // test roll
-	double result[6] = {0.0, -0.0583, 0, 1.57, -1.57, 0.0}; // test roll and pitch
+	// double result[6] = {0.0, -0.0583, 0, 1.57, -1.57, 0.0}; // test roll and pitch
 	// double result[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
 	std::vector<MICostFunction *> costV;
+	double result[6] = {0.0};
 
 	for(auto kF : keyFrames){
 		auto timestamp = kF.time;
@@ -200,451 +203,206 @@ int main(int argc, char **argv)
 		if(frameId<0){ROS_ERROR("can not find corresponding scan!!!"); exit(1);}
 		MatrixXd *velo_pointCloud = new MatrixXd();
 		loadVeloPointCloud(frameId, (*velo_pointCloud));
-		// MICostFunction *pcc = new MICostFunction(velo_pointCloud, depth, color);
-		// costV.push_back(pcc);
-		// pcc(T_cam_velo_xi, residuals, "velo_intensity1");
-		// pcc(T_cam_velo_xi_error, residuals+1, "velo_intensity2");
-		// pcc(T_cam_velo_xi_result, residuals+2, "velo_intensity3");
-		// for ( auto a:residuals ) std::cout<<a<<" "; std::cout<<std::endl;
-		// cv::Mat image_color;
-		// cv::eigen2cv(*color, image_color);
-		// cv::imshow( "image", image_color / 1.0 );                   // Show our image inside it.
-		// cv::waitKey(0);
-		problem.AddResidualBlock(new MICostFunction(velo_pointCloud, depth, color), nullptr, result);
+		MICostFunction *pcc = new MICostFunction(velo_pointCloud, depth, color);
+		costV.push_back(pcc);
 	}
-	// for(int p=0;p<6;p++){
-	// 	double param[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-	// 	double param_raw[6] = {-0.47637765, -0.07337429, -0.33399681, -2.8704988456, -1.56405382877, -1.84993623057};
-	// 	double range[6] = {1.0, 1.0, 1.0, 0.5, 0.5, 0.5};
-	// 	double *_param[1] = {param};
-	// 	double costs[200] = {0.0};
-	// 	double derivates[200] = {0.0};
-	// 	double residuals[1], total_cost = 0.0, total_derivate = 0.0;
-	// 	double jacobian[6];
-	// 	double *jacobians[1] = {jacobian};
-	//
-	// 	for(int i=0;i<200;i++){
-	// 		param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
-	// 		total_cost = 0.0;
-	// 		total_derivate = 0.0;
-	// 		for(int j=0;j<costV.size();j++){
-	// 			costV[j]->Evaluate(_param, residuals, jacobians);
-	// 			total_cost += residuals[0];
-	// 			total_derivate += jacobian[p];
-	// 		}
-	// 		costs[i] = total_cost;
-	// 		derivates[i] = total_derivate;
-	// 		// std::cout << p << " " << i << std::endl;
-	// 		// std::cout<<derivates[i]<<std::endl;
-	// 	}
-	// 	param[p] = param_raw[p];
-	//
-	// 	std::cout<<"%parameters [" << p << "]:" <<std::endl;
-	// 	std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
-	// 	std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
-	// }
-	// return 0;
-	//
-	// {
-	// 	// one parameter, 0.1 rad = 5.73 deg
-	// 	double _result[6] = {0.0, -0.0583, -0.015, 1.57, -1.45, 0.0};
-	// 	std::copy(_result, _result + 6, result);
-	// 	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.5, 0.02};
-	// 	for(int i=0;i<6;i++){
-	// 		problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-	// 		problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
-	// 	}
-	//
-	// 	ceres::Solver::Options options;
-	// 	// options.use_nonmonotonic_steps = true;
-	// 	options.linear_solver_type = ceres::DENSE_QR;
-	// 	options.minimizer_progress_to_stdout = true;
-	// 	ceres::Solver::Summary summary;
-	//
-	// 	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-	// 	ceres::Solve ( options, &problem, &summary );
-	// 	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-	//
-	// 	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-	// 	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-	//
-	// 	std::cout<<summary.FullReport() <<std::endl;
-	// 	std::cout<<"initial T_cam3_velo    : ";
-	// 	for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"boundWidth             : ";
-	// 	for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"estimated T_cam3_velo  : ";
-	// 	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-	//
-	// }
-	//
-	// {
-	// 	// one parameter, 0.1 rad = 5.73 deg
-	// 	double _result[6] = {0.0, -0.0583, -0.015, 1.47, -1.35, 0.0};
-	// 	std::copy(_result, _result + 6, result);
-	// 	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.5, 0.02, 0.02};
-	// 	for(int i=0;i<6;i++){
-	// 		problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-	// 		problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
-	// 	}
-	//
-	// 	ceres::Solver::Options options;
-	// 	// options.use_nonmonotonic_steps = true;
-	// 	options.linear_solver_type = ceres::DENSE_QR;
-	// 	options.minimizer_progress_to_stdout = true;
-	// 	ceres::Solver::Summary summary;
-	//
-	// 	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-	// 	ceres::Solve ( options, &problem, &summary );
-	// 	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-	//
-	// 	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-	// 	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-	//
-	// 	std::cout<<summary.FullReport() <<std::endl;
-	// 	std::cout<<"initial T_cam3_velo    : ";
-	// 	for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"boundWidth             : ";
-	// 	for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"estimated T_cam3_velo  : ";
-	// 	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-	//
-	// }
 
-	// {
-	// 	// two parameters, 0.1 rad = 5.73 deg, 0.1 rad = 5.73 deg
-	// 	double _result[6] = {0.0, -0.0583, -0.015, 1.47, -1.45, 0.0};
-	// 	std::copy(_result, _result + 6, result);
-	// 	const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.5, 0.02};
-	// 	for(int i=0;i<6;i++){
-	// 		problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-	// 		problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
-	// 	}
-	//
-	// 	ceres::Solver::Options options;
-	// 	// options.use_nonmonotonic_steps = true;
-	// 	options.linear_solver_type = ceres::DENSE_QR;
-	// 	options.minimizer_progress_to_stdout = true;
-	// 	ceres::Solver::Summary summary;
-	//
-	// 	std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-	// 	ceres::Solve ( options, &problem, &summary );
-	// 	std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-	//
-	// 	std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-	// 	std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-	//
-	// 	std::cout<<summary.FullReport() <<std::endl;
-	// 	std::cout<<"initial T_cam3_velo    : ";
-	// 	for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"boundWidth             : ";
-	// 	for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-	// 	std::cout<<"estimated T_cam3_velo  : ";
-	// 	for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-	//
-	// }
+	double total_cost = 0.0;
+	double *_param[1]={T_cam_velo_xi};
+	double residuals[1];
+	for(int j=0;j<costV.size();j++){
+		costV[j]->Evaluate(_param, residuals, nullptr);
+		total_cost += residuals[0];
+	}
+	std::cout<<"cost of ground truth: "<<total_cost<<std::endl;
 
 	{
-		// one parameter, 0.2 rad = 11.46 deg
-		double _result[6] = {0.0, -0.0583, -0.015, 1.57, -1.55, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.8, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.37, -1.35, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.5, 0.0, 0.0};
+			int num_steps[6] = {1, 1, 1, 21, 1, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.5/10, 0.0, 0.0};
+			int num_steps[6] = {1, 1, 1, 21, 1, 1};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		// options.initial_trust_region_radius = 0.1;
-		// options.max_trust_region_radius = 0.1;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
-	}
-	double interm[6] = {0.0};
-	std::copy(result, result + 6, interm);
-	std::cout<<"interm  : ";
-	for ( auto a:interm ) std::cout<<a<<" "; std::cout<<std::endl;
-
-	{
-		// one parameter, 0.2 rad = 11.46 deg
-		// double _result[6] = {0.0, -0.0583, -0.015, 1.57, -1.55, 0.0};
-		// std::copy(_result, _result + 6, result);
-		// const double boundWidth[6] = {0.02, 0.02, 0.02, 0.02, 0.8, 0.02};
-		// for(int i=0;i<6;i++){
-		// 	problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-		// 	problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
-		// }
-
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:interm ) std::cout<<a<<" "; std::cout<<std::endl;
-		// std::cout<<"boundWidth             : ";
-		// for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
-	}
-
-	{
-		// two parameters, 0.1m, 0.1 rad = 5.73 deg
-		// double _result[6] = {0.0, 0.0, -0.015, 1.57, -1.45, 0.0};
-		std::copy(interm, interm + 6, result);
-		const double boundWidth[6] = {0.02, 0.5, 0.02, 0.02, 0.5, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, result[i] + boundWidth[i] / 2);
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
-
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:interm ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// three parameters, 0.1m, 0.1m, 0.1 rad = 5.73 deg
-		double _result[6] = {0.1, 0.0, -0.015, 1.57, -1.45, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.2, 0.15, 0.02, 0.02, 0.5, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.57, -1.55, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.0, 0.5, 0.0};
+			int num_steps[6] = {1, 1, 1, 1, 21, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.0, 0.5/10, 0.0};
+			int num_steps[6] = {1, 1, 1, 1, 21, 1};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// two parameters, 0.1 rad = 5.73 deg, 0.1 rad = 5.73 deg
-		double _result[6] = {0.0, -0.0583, -0.015, 1.47, -1.45, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.02, 0.02, 0.02, 0.5, 0.5, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.57, -1.35, 0.2};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.5};
+			int num_steps[6] = {1, 1, 1, 1, 1, 21};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.5/10};
+			int num_steps[6] = {1, 1, 1, 1, 1, 21};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// three parameters, 0.1 rad = 5.73 deg, 0.1 rad = 5.73 deg, 0.1 rad = 5.73 deg
-		double _result[6] = {0.0, -0.0583, -0.015, 1.47, -1.45, 0.1};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.02, 0.02, 0.02, 0.5, 0.5, 0.5};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.37, -1.55, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.5, 0.5, 0.0};
+			int num_steps[6] = {1, 1, 1, 21, 21, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.5/10, 0.5/10, 0.0};
+			int num_steps[6] = {1, 1, 1, 21, 21, 1};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// one parameter, 0.1m
-		double _result[6] = {0.1, -0.0583, -0.015, 1.57, -1.35, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.2, 0.02, 0.02, 0.02, 0.02, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.37, -1.55, 0.2};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.5, 0.5, 0.5};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.5/10, 0.5/10, 0.5/10};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// two parameters, 0.1m, 0.1m
-		double _result[6] = {0.1, 0, -0.015, 1.57, -1.35, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.2, 0.2, 0.02, 0.02, 0.02, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.47, -1.45, 0.1};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.3, 0.3, 0.3};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.5/10, 0.5/10, 0.5/10};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
 
 	{
-		// three parameters, 0.1m, 0.1m, 0.1m
-		double _result[6] = {0.1, 0.0, 0.0, 1.57, -1.35, 0.0};
-		std::copy(_result, _result + 6, result);
-		const double boundWidth[6] = {0.2, 0.2, 0.2, 0.02, 0.02, 0.02};
-		for(int i=0;i<6;i++){
-			problem.SetParameterLowerBound(result, i, _result[i] - boundWidth[i] / 2);
-			problem.SetParameterUpperBound(result, i, _result[i] + boundWidth[i] / 2);
+		double initial[6] = {0.0, -0.0583, -0.015, 1.47, -1.45, 0.1};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {0.0, 0.0, 0.0, 0.5, 0.5, 0.5};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.0, 0.0, 0.0, 0.5/10, 0.5/10, 0.5/10};
+			int num_steps[6] = {1, 1, 1, 21, 21, 21};
 
-		ceres::Solver::Options options;
-		// options.use_nonmonotonic_steps = true;
-		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-		ceres::Solver::Summary summary;
-
-		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-		ceres::Solve ( options, &problem, &summary );
-		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-		std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>( t2-t1 );
-		std::cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<std::endl;
-
-		std::cout<<summary.FullReport() <<std::endl;
-		std::cout<<"initial T_cam3_velo    : ";
-		for ( auto a:_result ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"boundWidth             : ";
-		for ( auto a:boundWidth ) std::cout<<a<<" "; std::cout<<std::endl;
-		std::cout<<"estimated T_cam3_velo  : ";
-		for ( auto a:result ) std::cout<<a<<" "; std::cout<<std::endl;
-
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
 	}
+	std::cout<<"---"<<std::endl;
+
 	return 0;
+}
+
+void GridSearch(const double *initial, const double *range, const int *num_steps, double *result, std::vector<MICostFunction *> &costV)
+{
+	double minCost = 1e10;
+	double param[6] = {0.0};
+	double *_param[1] = {param};
+	double residuals[1];
+	double total_cost = 0.0;
+
+	int total_steps = 1;
+	int dimension_steps[6] = {0};
+	for(int i=5;i>=0;i--){
+		dimension_steps[i] = total_steps;
+		total_steps *= num_steps[i];
+	}
+	// std::cout<<"dimension_steps = ["; for ( auto a:dimension_steps ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	std::cout<<"total_steps = "<<total_steps<<", will cost about total_steps*costV.size()*1e-3s = "<<total_steps<<"*"<<costV.size()<<"*"<<1e-3<<"s="<<total_steps*costV.size()*1e-3<<"s"<<std::endl;
+	for(int i=0;i<total_steps;i++){
+		int res_steps = i;
+		int current_indexs[6];
+		for(int p=0;p<6;p++){
+			current_indexs[p] = res_steps / dimension_steps[p];
+			res_steps = res_steps % dimension_steps[p];
+			param[p] = initial[p] - range[p]/2 + double(current_indexs[p])/std::max(1, num_steps[p]-1)*range[p];
+		}
+		// std::cout<<"current_indexs = ["; for ( auto a:current_indexs ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		total_cost = 0.0;
+		for(int j=0;j<costV.size();j++){
+			costV[j]->Evaluate(_param, residuals, nullptr);
+			total_cost += residuals[0];
+		}
+		if(total_cost < minCost)
+		{
+			minCost = total_cost;
+			for(int p=0;p<6;p++){
+				result[p] = param[p];
+			}
+		}
+	}
+	std::cout<<"final cost: "<<minCost<<std::endl;
 }
