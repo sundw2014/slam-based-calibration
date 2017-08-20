@@ -184,18 +184,31 @@ bool MICostFunction::Evaluate(double const* const* parameters,
     // }
     // 5.2 J = E(sampleGradients)
     // Matrix<double, 6, 1> J = sampleGradients.rowwise().mean();
-    const double step[6] = {0.1, 0.1, 0.1, 0.01, 0.01, 0.01};
+    const double step[6] = {0.05, 0.05, 0.05, 0.05, 0.05, 0.05}; //5 cm, 2.5 degree
     for(int i=0; i<6; i++){
       double residual = 0.0;
       double _param[6] = {0.0};
       for(int j=0;j<6;j++){
         _param[j] = parameters[0][j];
       }
-      _param[i] += step[i];
+      _param[i] += step[i] / 2;
       double *_params[1] = {_param};
       Evaluate(_params, &residual, nullptr);
       jacobian[i] = (residual - residuals[0]) / step[i];
     }
+
+    for(int i=0; i<6; i++){
+      double residual = 0.0;
+      double _param[6] = {0.0};
+      for(int j=0;j<6;j++){
+        _param[j] = parameters[0][j];
+      }
+      _param[i] -= step[i] / 2;
+      double *_params[1] = {_param};
+      Evaluate(_params, &residual, nullptr);
+      jacobian[i] += (residuals[0] - residual) / step[i];
+    }
+
     return true;
   }
 
