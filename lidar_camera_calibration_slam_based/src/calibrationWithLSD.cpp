@@ -216,6 +216,38 @@ int main(int argc, char **argv)
 	}
 	std::cout<<"cost of ground truth: "<<total_cost<<std::endl;
 
+	for(int p=0;p<6;p++){
+		double param[6] = {0.0, -0.0583, -0.015, 1.57, -1.35, 0.0};
+		double param_raw[6] = {0.0, -0.0583, -0.015, 1.57, -1.35, 0.0};
+		double range[6] = {5.0, 5.0, 5.0, 0.5, 0.5, 0.5}; // 5.0 / 200 m = 0.025m, 0.5 / 200 rad = 0.0025 rad= 0.143 deg
+		double *_param[1] = {param};
+		double costs[200] = {0.0};
+		double derivates[200] = {0.0};
+		double residuals[1], total_cost = 0.0, total_derivate = 0.0;
+		double jacobian[6];
+		double *jacobians[1] = {jacobian};
+
+		for(int i=0;i<200;i++){
+			param[p] = param_raw[p] - range[p]/2 + i/200.0*range[p];
+			total_cost = 0.0;
+			total_derivate = 0.0;
+			for(int j=0;j<costV.size();j++){
+				costV[j]->Evaluate(_param, residuals, nullptr);
+				total_cost += residuals[0];
+				// total_derivate += jacobian[p];
+			}
+			costs[i] = total_cost;
+			// derivates[i] = total_derivate;
+			// std::cout << p << " " << i << std::endl;
+			// std::cout<<derivates[i]<<std::endl;
+		}
+		param[p] = param_raw[p];
+
+		std::cout<<"%parameters [" << p << "]:" <<std::endl;
+		std::cout<<"C"<<p<<" = ["; for ( auto a:costs ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+		// std::cout<<"D"<<p<<" = ["; for ( auto a:derivates ) std::cout<<a<<" "; std::cout<<"]"<<std::endl;
+	}
+
 	// {
 	// 	double initial[6] = {0.0, -0.0583, -0.015, 1.37, -1.35, 0.0};
 	// 	std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
@@ -385,39 +417,181 @@ int main(int argc, char **argv)
 	// }
 	// std::cout<<"---"<<std::endl;
 
+	// {
+	// 	double initial[6] = {0.0, 0.0, 0.0, 1.47, -1.45, 0.1};
+	// 	std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	{
+	// 		double range[6] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.125, 0.125, 0.125, 0.125, 0.125, 0.125};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-3: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-4: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// }
+	// std::cout<<"---"<<std::endl;
+	//
+	// {
+	// 	double initial[6] = {0.0, 0.0, 0.0, 1.37, -1.55, 0.2};
+	// 	std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	{
+	// 		double range[6] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.125, 0.125, 0.125, 0.125, 0.125, 0.125};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-3: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// 	{
+	// 		std::copy(result, result+6, initial);
+	// 		double range[6] = {0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625};
+	// 		int num_steps[6] = {4, 4, 4, 4, 4, 4};
+	//
+	// 		GridSearch(initial, range, num_steps, result, costV);
+	// 		std::cout<<"level-4: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+	// 	}
+	// }
+	// std::cout<<"---"<<std::endl;
+
 	{
-		double initial[6] = {0.0, 0.0, 0.0, 1.47, -1.45, 0.1};
+		double initial[6] = {0.0, -0.0583, 0.3, 1.57, -1.35, 0.0};
 		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		{
-			double range[6] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
-			int num_steps[6] = {4, 4, 4, 4, 4, 4};
+			double range[6] = {0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {1, 1, 21, 1, 1, 1};
 
 			GridSearch(initial, range, num_steps, result, costV);
 			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
 		{
 			std::copy(result, result+6, initial);
-			double range[6] = {0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
-			int num_steps[6] = {4, 4, 4, 4, 4, 4};
+			double range[6] = {0.0, 0.0, 0.1, 0.0, 0.0, 0.0};
+			int num_steps[6] = {1, 1, 21, 1, 1, 1};
 
 			GridSearch(initial, range, num_steps, result, costV);
 			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
+	}
+	std::cout<<"---"<<std::endl;
+
+	{
+		double initial[6] = {0.0, 0.3, -0.015, 1.57, -1.35, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		{
-			std::copy(result, result+6, initial);
-			double range[6] = {0.125, 0.125, 0.125, 0.125, 0.125, 0.125};
-			int num_steps[6] = {4, 4, 4, 4, 4, 4};
+			double range[6] = {0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {1, 21, 1, 1, 1, 1};
 
 			GridSearch(initial, range, num_steps, result, costV);
-			std::cout<<"level-3: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
 		{
 			std::copy(result, result+6, initial);
-			double range[6] = {0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625};
-			int num_steps[6] = {4, 4, 4, 4, 4, 4};
+			double range[6] = {0.0, 0.1, 0.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {1, 21, 1, 1, 1, 1};
 
 			GridSearch(initial, range, num_steps, result, costV);
-			std::cout<<"level-4: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+	}
+	std::cout<<"---"<<std::endl;
+
+	{
+		double initial[6] = {0.3, -0.0583, -0.015, 1.57, -1.35, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {21, 1, 1, 1, 1, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.1, 0.0, 0.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {21, 1, 1, 1, 1, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+	}
+	std::cout<<"---"<<std::endl;
+
+	{
+		double initial[6] = {0.3, 0.3, 0.3, 1.57, -1.35, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {1.0, 1.0, 1.0, 0.0, 0.0, 0.0};
+			int num_steps[6] = {11, 11, 11, 1, 1, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.2, 0.2, 0.2, 0.0, 0.0, 0.0};
+			int num_steps[6] = {11, 11, 11, 1, 1, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+	}
+	std::cout<<"---"<<std::endl;
+
+	{
+		double initial[6] = {0.3, 0.3, 0.3, 1.57, -1.55, 0.0};
+		std::cout<<"initial = ["; for ( auto a:initial ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		{
+			double range[6] = {1.0, 1.0, 1.0, 0.0, 0.5, 0.0};
+			int num_steps[6] = {11, 11, 11, 1, 11, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-1: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
+		}
+		{
+			std::copy(result, result+6, initial);
+			double range[6] = {0.2, 0.2, 0.2, 0.0, 0.1, 0.0};
+			int num_steps[6] = {11, 11, 11, 1, 11, 1};
+
+			GridSearch(initial, range, num_steps, result, costV);
+			std::cout<<"level-2: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
 	}
 	std::cout<<"---"<<std::endl;
@@ -447,14 +621,6 @@ int main(int argc, char **argv)
 
 			GridSearch(initial, range, num_steps, result, costV);
 			std::cout<<"level-3: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
-		}
-		{
-			std::copy(result, result+6, initial);
-			double range[6] = {0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625};
-			int num_steps[6] = {4, 4, 4, 4, 4, 4};
-
-			GridSearch(initial, range, num_steps, result, costV);
-			std::cout<<"level-4: result = ["; for ( auto a:result ) std::cout<<a<<" "; std::cout<<"];"<<std::endl;
 		}
 	}
 	std::cout<<"---"<<std::endl;
